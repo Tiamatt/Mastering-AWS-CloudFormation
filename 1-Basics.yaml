@@ -1,0 +1,9 @@
+# create a new S3 bucket 
+Resources:
+  MyS3Bucket: # logical ID
+    Type: 'AWS::S3::Bucket' 
+    Properties:
+      BucketName: jon-snow-bucket
+      Tags: # list of tags
+        - Key: CloudFormationLab
+          Value: JonSnow
