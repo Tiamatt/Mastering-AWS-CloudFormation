@@ -1,0 +1,68 @@
+## =================== DESCRIPTION ===================
+Description: >-
+  AWS CloudFormation sample template. 
+  Create a new EC2 instance and if environment is 'prod' then attach a new EBS volume to it
+
+## =================== PARAMETERS ===================
+Parameters:
+  paramEnvironmentType: # ask a user to define whether it is 'dev', 'qa' or 'prod' environment
+    Description: Environment type
+    Default: dev # by default it is 'dev' environment
+    Type: String
+    AllowedValues: [dev, qa, prod]
+    ConstraintDescription: Must specify 'dev', 'qa' or 'prod'
+  paramTagValues: #ask a user to specify some values for tags
+    Description: 'Comma-delimited list of tag values'
+    Type: CommaDelimitedList
+    Default: 'JonSnow, DaenerysTargaryen, AryaStark'
+
+## =================== MAPPINGS ===================
+Mappings: # map image ids with regions
+  mapRegion:
+    us-east-1:
+      AMI: ami-1853ac65
+    us-west-1:
+      AMI: ami-bf5540df
+    eu-west-1:
+      AMI: ami-3bfab942
+    ap-southeast-1:
+      AMI: ami-e2adf99e
+    ap-southeast-2:
+      AMI: ami-43874721
+
+## =================== CONDITIONS ===================
+Conditions:
+  isProd: !Equals [!Ref paramEnvironmentType, prod] # if 'prod' then TRUE, otherwise FALSE
+  isDev: !Equals [!Ref paramEnvironmentType, dev]   # if 'dev' then TRUE, otherwise FALSE
+
+## =================== RESOURCES ===================
+Resources:
+  myEC2Instance: # create a new EC2 instance
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !FindInMap # define imageId based on region
+        - mapRegion # map's name
+        - !Ref 'AWS::Region' # top level key which is a region where a new instance is being created
+        - AMI # second level key - e.g. for 'us-east-1' the value for ImageId is 'ami-0ff8a91507f77f867'  
+      InstanceType: !If [isProd, t2.micro, !If [isDev, t2.nano, t1.micro] ] # if 'prod', then t2.micro, (else) if 'dev' then t2.nano otherwise (if 'qa') then t1.micro  
+      Tags:
+      - Key: CloudFormationLab
+        Value: !Join [' ', ['EC2 Instance for', !Ref AWS::Region] ] 
+
+  myVolume: # create a new EBS volume only if environment is 'prod'
+    Type: 'AWS::EC2::Volume'
+    Condition: isProd # conditionally create EBS volume (only if environment is 'prod')
+    Properties:
+      Size: 100 # 100 GiB
+      AvailabilityZone: !GetAtt myEC2Instance.AvailabilityZone # get AZ of a new EC2 instance
+      Tags:
+        - Key: CloudFormationLab
+          Value: !Select [ 0, !Ref paramTagValues ] # output is 'JonSnow'
+  
+  myMountPoint: # attach an Amazon EBS volume to an EC2 instance only i environment is 'prod'
+    Type: 'AWS::EC2::VolumeAttachment'
+    Condition: isProd # conditionally attach EBS volume (only if environment is 'prod')
+    Properties:
+      InstanceId: !Ref myEC2Instance # ref to a new EC2 instance
+      VolumeId: !Ref myVolume # ref to a new EBS volume
+      Device: /dev/sdh
