@@ -1,0 +1,88 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >-
+  AWS CloudFormation sample template. 
+  Create EC2 instance with ssh access:
+  1. Create an Amazon EC2 instance running the Amazon Linux AMI.
+  2. Create an EC2 security group to access the instance using SSH.
+
+Parameters:
+  paramInstanceType:
+    Description: Specify EC2 instance type
+    Type: String
+    Default: t2.micro # free tier eligible
+    AllowedValues:
+      - t1.micro
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium # feel free to add more instance types
+    ConstraintDescription: Must be a valid Amazon EC2 instance type
+  paramImageId: 
+    Description: Specify AMI Id for EC2 instance
+    Type: String
+    Default: ami-0be2609ba883822ec # for us-east-1, Amazon Linux, free tier eligible
+    ConstraintDescription: Must be a valid AMI and based on Amazon Linux
+  paramEC2KeyPairName:
+    Description: Specify an existing EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+    ConstraintDescription: Must be the name of an existing EC2 KeyPair
+  paramCidrBlockForSSH:
+    Description: The IP address range that can be used to SSH to the EC2 instances
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 0.0.0.0/0
+    AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
+    ConstraintDescription: Must be a valid IP CIDR range of the form x.x.x.x/x.
+  paramTagValue:
+    Description: Specify tag value that identifies resources as a target for deployments
+    Type: String
+    Default: DoloresAbernathy
+    AllowedPattern: "[\\x20-\\x7E]*"
+    ConstraintDescription: Must contain only ASCII characters
+
+Resources:
+  # create a new EC2 instance
+  myEC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      SecurityGroupIds: 
+        - !GetAtt myInstanceSecurityGroup.GroupId
+      KeyName: !Ref paramEC2KeyPairName
+      ImageId: !Ref paramImageId
+      InstanceType: !Ref paramInstanceType
+      # SubnetId: !Ref paramSubnetId
+      Tags:
+        - Key: Name
+          Value: !Ref paramTagValue
+  
+  # create a new Security Group
+  myInstanceSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH access via port 22
+      # VpcId: !Ref paramVpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: !Ref paramCidrBlockForSSH
+      Tags:
+        - Key: Name
+          Value: !Ref paramTagValue  
+
+Outputs:
+  outputInstanceId:
+    Description: InstanceId of the newly created EC2 instance
+    Value: !Ref myEC2Instance
+  outputAZ:
+    Description: AZ of the newly created EC2 instance
+    Value: !GetAtt myEC2Instance.AvailabilityZone
+  outputPublicDNS:
+    Description: Public DNS name of the newly created EC2 instance
+    Value: !GetAtt myEC2Instance.PublicDnsName
+  outputPublicIP:
+    Description: Public IP address of the newly created EC2 instance
+    Value: !GetAtt myEC2Instance.PublicIp
