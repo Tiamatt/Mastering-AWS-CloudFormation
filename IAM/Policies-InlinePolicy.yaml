@@ -1,0 +1,57 @@
+## =================== VERSION ===================
+AWSTemplateFormatVersion: '2010-09-09'
+
+## =================== DESCRIPTION ===================
+Description: >-
+  AWS CloudFormation sample template.
+  Create an Inline IAM Policy that is embedded in the specified IAM user(s), group(s), or(and) role(s).
+  AWS doc: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-policy.html
+
+## =================== PARAMETERS ===================
+Parameters:
+  paramUsers:
+    Description: 'Comma-delimited list of user names to associate the inline policy with. Users are optional but you must specify at least one of Users, Groups, and Roles'
+    Type: CommaDelimitedList
+    Default: ''
+  paramGroups:
+    Description: 'Comma-delimited list of group names to associate the inline policy with. Groups are optional but you must specify at least one of Users, Groups, and Roles'
+    Type: CommaDelimitedList
+    Default: ''
+  paramRoles:
+    Description: 'Comma-delimited list of role names to associate the inline policy with. Roles are optional but you must specify at least one of Users, Groups, and Roles'
+    Type: CommaDelimitedList
+    Default: ''
+
+## =================== CONDITIONS ===================
+Conditions:
+  hasUsers: # check if any user was specified as an input parameter
+    !Not [!Equals [ !Join ['', !Ref paramUsers], '' ] ]
+  hasGroups: # check if any group was specified as an input parameter
+    !Not [!Equals [ !Join ['', !Ref paramGroups], '' ] ]
+  hasRoles: # check if any role was specified as an input parameter
+    !Not [!Equals [ !Join ['', !Ref paramRoles], '' ] ]
+
+## =================== RESOURCES ===================
+Resources:
+  myInlinePolicyForS3ReadOnly:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: inlineS3ReadOnlyPolicy # give a name to this policy
+      PolicyDocument: # JSON policy document
+        Version: '2012-10-17'
+        Statement: # allow read only access to all S3 buckets
+          - Effect: Allow
+            Action:
+              - 's3:Get*'
+              - 's3:List*'
+            Resource: '*'
+      # Important! Groups, Roles, and Users properties are optional. However, you must specify at least one of these properties.
+      Users: !If [ hasUsers, !Ref paramUsers, !Ref "AWS::NoValue"] # attach this policy to the list of specified users if any
+      Groups: !If [ hasGroups, !Ref paramGroups, !Ref "AWS::NoValue"] # attach this policy to the list of specified groups if any
+      Roles: !If [ hasRoles, !Ref paramRoles, !Ref "AWS::NoValue"] # attach this policy to the list of specified roles if any
+
+## =================== OUTPUT ===================
+Outputs:
+  outputPolicy:
+    Description: Inline policy name
+    Value: !Ref myInlinePolicyForS3ReadOnly
