@@ -1,0 +1,33 @@
+## =================== VERSION ===================
+AWSTemplateFormatVersion: '2010-09-09'
+
+## =================== DESCRIPTION ===================
+Description: >-
+  AWS CloudFormation sample template. 
+  Adds single or multiple users to the group.
+  AWS doc: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-iam-addusertogroup.html
+
+## =================== PARAMETERS ===================
+Parameters:
+  paramGroupName:
+    Description: Name of existing group
+    Type: String
+    MinLength: 1
+  paramUserNames:
+    Description: Comma-delimited list of user names to attach to the group
+    Type: CommaDelimitedList
+
+
+## =================== RESOURCES ===================
+Resources:
+  myUserToGroupAddition:
+    Type: 'AWS::IAM::UserToGroupAddition'
+    Properties:
+      GroupName: !Ref paramGroupName # existing group name
+      Users: !Ref paramUserNames # list of existing user names
+
+## =================== OUTPUT ===================
+Outputs:
+  outputName:
+    Description: Name of users to a group addition
+    Value: !Ref myUserToGroupAddition
