@@ -1,0 +1,130 @@
+## =================== VERSION ===================
+AWSTemplateFormatVersion: '2010-09-09'
+
+## =================== DESCRIPTION ===================
+Description: >-
+  AWS CloudFormation sample template. 
+  Create an IAM User and optionally attach it to IAM group(s)
+  Optionally embed AWS managed policies, customer managed policies and inline policies in the user
+  AWS doc: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-iam-user.html
+
+## =================== PARAMETERS ===================
+Parameters:
+  paramUserName:
+    Description: Unique name for a new user
+    Type: String
+    AllowedPattern: "^[a-zA-Z][a-zA-Z0-9]{1,64}$"
+    ConstraintDescription: User name must be between 1 and 64 alphanumeric characters in length, starting with an uppercase or lowercase character of the alphabet.
+  paramUserPassword:
+    Description: Account password for a new user
+    Type: String    
+    NoEcho: 'true' # mask the parameter value as asterisks (*****) to prevent it from being displayed in the console, CLI, or API
+    AllowedPattern: ^[a-zA-Z][a-zA-Z0-9!@#$%&]{8,32}$
+    ConstraintDescription: Password must be between 8 and 32 characters, start with lowercase or uppercase letter, and can be alphanumeric with the following special characters !@#$%&
+  paramGroups:
+    Description: 'Comma-delimited list of group names  to which you want to add the user (optional)'
+    Type: CommaDelimitedList
+    Default: ''
+  paramPath:
+    Description: IAM Path that you want to associate with the user 
+    Type: String
+    AllowedPattern: (^\/$)|(^\/.*\/$)
+    Default: "/"
+  paramManagedPolicy:
+    Type: String
+    Description: Select predefined Managed Policy that you want to associate with the user
+    AllowedValues:
+      - DatabaseAdministrator
+      - SystemAdministrator
+      - DeveloperPowerUser
+      # - CustomS3Admin
+      - View-Only
+      - None
+    Default: None 
+  # paramUniqueKey:
+  #   Description: Unique suffix for inline policies
+  #   Type: String
+  #   Default: DoloresAbernathy
+  #   AllowedPattern: ^[a-zA-Z][a-zA-Z]{1,20}$
+  #   ConstraintDescription: Must contain only ASCII characters
+  paramTagValue:
+    Description: Tag value that identifies resources as a target for deployments
+    Type: String
+    Default: DoloresAbernathy
+    AllowedPattern: "[\\x20-\\x7E]*"
+    ConstraintDescription: Must contain only ASCII characters
+
+## =================== MAPPINGS ===================
+Mappings:
+  # listing managed IAM policies
+  # AWS CLI command to get the full list of policies: 'aws iam list-policies'
+  mapManagedPolicies: # AWS and customer managed 
+    DatabaseAdministrator: 
+      ARN: arn:aws:iam::aws:policy/job-function/DatabaseAdministrator
+    SystemAdministrator: 
+      ARN: arn:aws:iam::aws:policy/job-function/SystemAdministrator
+    DeveloperPowerUser: 
+      ARN: arn:aws:iam::aws:policy/PowerUserAccess 
+    # example with custom managed IAM policy - 
+    # CustomS3Admin: # this is Customer Managed Policy - replace arn with your own
+      # ARN: arn:aws:iam::111111111111:policy/customerManagedEC2ReadOnlyPolicy
+      # Important! line below will NOT work because Mapping section does NOT support parameters, pseudo parameters, or intrinsic functions
+      # ARN: !Sub 'arn:aws:iam::${AWS::AccountId}:policy/customerManagedEC2ReadOnlyPolicy'
+    View-Only: 
+      ARN: arn:aws:iam::aws:policy/job-function/ViewOnlyAccess
+    None: 
+      ARN: arn:aws:iam::aws:policy/NoAccess
+
+## =================== CONDITIONS ===================
+Conditions:
+  hasGroups: # check if at list one group was specified as an input parameter
+    !Not [!Equals [ !Join ['', !Ref paramGroups], '' ] ]
+  hasManagedPolicy: # check if any group was specified as an input parameter
+    !Not [!Equals [ !Ref paramManagedPolicy, 'None'] ]
+ 
+## =================== RESOURCES ===================
+Resources:
+  myUser:
+    Type: 'AWS::IAM::User'
+    Properties:
+      UserName: !Ref paramUserName # give a name to this user
+      LoginProfile: # specify a password for this user
+        Password: !Ref paramUserPassword
+        PasswordResetRequired: true # make this user to set a new password on next sign-in
+      Path: !Ref paramPath
+      Groups: # list of groups to which you want to add the user
+        - !If [ hasGroups, !Ref paramGroups, !Ref "AWS::NoValue"] # attach this user to the list of specified groups if any
+      ManagedPolicyArns: # list of ARNs of IAM managed policies that you want to attach to the user
+        - !If [ hasManagedPolicy, !FindInMap [ mapManagedPolicies, !Ref paramManagedPolicy, ARN], !Ref "AWS::NoValue" ] # find an ARN of specified paramManagedPolicy
+        - arn:aws:iam::aws:policy/AWSCloud9Administrator # provides administrator access to AWS Cloud9
+        # - arn:aws:iam::111111111111:policy/customerManagedEC2ReadOnlyPolicy # use your own customer managed policy
+      Policies: # list of inline policy documents that are embedded in the user
+        - PolicyName: inlineS3ReadOnlyPolicy # give a unique name to this policy
+          PolicyDocument: # JSON policy document
+            Version: '2012-10-17'
+            Statement: # allow read only access to all S3 buckets
+              - Effect: Allow
+                Action:
+                  - 's3:Get*'
+                  - 's3:List*'
+                Resource: '*'
+        - PolicyName: inlineS3CreateBucketOnlyPolicy # give a unique name to this policy
+          PolicyDocument: # JSON policy document
+            Version: '2012-10-17'
+            Statement: # allow create S3 bucket only access
+              - Effect: Allow
+                Action:
+                  - 's3:CreateBucket*'
+                Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Ref paramTagValue
+
+## =================== OUTPUT ===================
+Outputs:
+  outputUserName:
+    Description: User name
+    Value: !Ref myUser
+  outputUser:
+    Description: User ARN
+    Value: !GetAtt myUser.Arn
