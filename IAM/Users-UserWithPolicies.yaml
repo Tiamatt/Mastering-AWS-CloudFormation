@@ -92,8 +92,7 @@ Resources:
         Password: !Ref paramUserPassword
         PasswordResetRequired: true # make this user to set a new password on next sign-in
       Path: !Ref paramPath
-      Groups: # list of groups to which you want to add the user
-        - !If [ hasGroups, !Ref paramGroups, !Ref "AWS::NoValue"] # attach this user to the list of specified groups if any
+      Groups: !If [ hasGroups, !Ref paramGroups, !Ref "AWS::NoValue"] # attach this user to the list of specified groups if any
       ManagedPolicyArns: # list of ARNs of IAM managed policies that you want to attach to the user
         - !If [ hasManagedPolicy, !FindInMap [ mapManagedPolicies, !Ref paramManagedPolicy, ARN], !Ref "AWS::NoValue" ] # find an ARN of specified paramManagedPolicy
         - arn:aws:iam::aws:policy/AWSCloud9Administrator # provides administrator access to AWS Cloud9

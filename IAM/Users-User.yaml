@@ -51,8 +51,7 @@ Resources:
         Password: !Ref paramUserPassword
         PasswordResetRequired: true # make this user to set a new password on next sign-in
       Path: !Ref paramPath
-      Groups: 
-        - !If [ hasGroups, !Ref paramGroups, !Ref "AWS::NoValue"] # attach this user to the list of specified groups if any
+      Groups: !If [ hasGroups, !Ref paramGroups, !Ref "AWS::NoValue"] # attach this user to the list of specified groups if any
       Tags:
         - Key: Name
           Value: !Ref paramTagValue
