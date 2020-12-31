@@ -1,0 +1,49 @@
+## =================== VERSION ===================
+AWSTemplateFormatVersion: '2010-09-09'
+
+## =================== DESCRIPTION ===================
+Description: >-
+  AWS CloudFormation sample template. 
+  Create an IAM Group.
+  Optionally embed AWS managed policies, customer managed policies and inline policies in the group.
+  AWS doc: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-iam-group.html
+
+## =================== PARAMETERS ===================
+Parameters:
+  paramPath:
+    Description: IAM Path that you want to associate with the group 
+    Type: String
+    AllowedPattern: (^\/$)|(^\/.*\/$)
+    Default: "/"
+
+## =================== RESOURCES ===================
+Resources:
+  myGroup:
+    Type: 'AWS::IAM::Group'
+    Properties:
+      GroupName: ApiDevelopers # give a name to this group
+      Path: !Ref paramPath
+      ManagedPolicyArns: # list of ARNs of IAM managed policies that you want to attach to the group
+        - arn:aws:iam::aws:policy/AWSCloud9Administrator # provide administrator access to AWS Cloud9
+        - arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator # provide full access to create/edit/delete APIs in Amazon API Gateway
+        # - arn:aws:iam::111111111111:policy/customerManagedBlahBlahPolicy # use your own customer managed policy specifing its ARN
+      Policies: # list of inline policy documents that are embedded in the group
+        - PolicyName: inlineCloudWatchLogsPolicy # give a unique name to this policy
+          PolicyDocument: # JSON policy document
+            Version: '2012-10-17'
+            Statement: # provide write permissions to CloudWatch Logs
+              - Effect: Allow
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream*'
+                  - 'logs:PutLogEvents'
+                Resource: '*'
+
+## =================== OUTPUT ===================
+Outputs:
+  outputGroupName:
+    Description: Group name
+    Value: !Ref myGroup
+  outputGroupARN:
+    Description: Group ARN
+    Value: !GetAtt myGroup.Arn                
