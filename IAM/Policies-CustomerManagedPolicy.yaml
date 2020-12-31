@@ -1,0 +1,63 @@
+## =================== VERSION ===================
+AWSTemplateFormatVersion: '2010-09-09'
+
+## =================== DESCRIPTION ===================
+Description: >-
+  AWS CloudFormation sample template.
+  Create a Customer Managed IAM Policy and optionally attach it to IAM user(s), group(s), or(and) role(s)
+  AWS doc: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-managedpolicy.html
+
+## =================== PARAMETERS ===================
+Parameters:
+  paramPath:
+    Description: IAM Path that you want to associate with the policy 
+    Type: String
+    AllowedPattern: (^\/$)|(^\/.*\/$)
+    Default: "/"
+  paramUsers:
+    Description: 'Comma-delimited list of user names to attach the policy to (optional)'
+    Type: CommaDelimitedList
+    Default: ''
+  paramGroups:
+    Description: 'Comma-delimited list of group names to attach the policy to (optional)'
+    Type: CommaDelimitedList
+    Default: ''
+  paramRoles:
+    Description: 'Comma-delimited list of role names to attach the policy to (optional)'
+    Type: CommaDelimitedList
+    Default: ''
+
+## =================== CONDITIONS ===================
+Conditions:
+  hasUsers: # check if any user was specified as an input parameter
+    !Not [!Equals [ !Join ['', !Ref paramUsers], '' ] ]
+  hasGroups: # check if any group was specified as an input parameter
+    !Not [!Equals [ !Join ['', !Ref paramGroups], '' ] ]
+  hasRoles: # check if any role was specified as an input parameter
+    !Not [!Equals [ !Join ['', !Ref paramRoles], '' ] ]
+
+## =================== RESOURCES ===================
+Resources:
+  myCustomerManagedPolicyForEC2:
+    Type: 'AWS::IAM::ManagedPolicy'
+    Properties:
+      ManagedPolicyName: customerManagedEC2ReadOnlyPolicy # give a name to this policy
+      Description: Customer managed policy for read only access to EC2 instance
+      Path: !Ref paramPath
+      PolicyDocument: # JSON policy document 
+        Version: '2012-10-17'
+        Statement: # allow read only access to EC2 instance
+          - Effect: Allow
+            Action: 
+              - 'ec2:Describe'
+            Resource: '*'
+      # IAM entities (Groups, Roles, and Users) are optional properties
+      Users: !If [ hasUsers, !Ref paramUsers, !Ref "AWS::NoValue"] # attach this policy to the list of specified users if any
+      Groups: !If [ hasGroups, !Ref paramGroups, !Ref "AWS::NoValue"] # attach this policy to the list of specified groups if any
+      Roles: !If [ hasRoles, !Ref paramRoles, !Ref "AWS::NoValue"] # attach this policy to the list of specified roles if any
+
+## =================== OUTPUT ===================
+Outputs:
+  outputPolicy:
+    Description: Customer managed policy name
+    Value: !Ref myCustomerManagedPolicyForEC2
