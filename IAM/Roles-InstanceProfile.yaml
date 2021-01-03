@@ -1,0 +1,47 @@
+## =================== VERSION ===================
+AWSTemplateFormatVersion: '2010-09-09'
+
+## =================== DESCRIPTION ===================
+Description: >-
+  AWS CloudFormation sample template 
+  Use an instance profile to pass an IAM role to an EC2 instance
+  AWS doc: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-instanceprofile.html
+
+## =================== PARAMETERS ===================
+Parameters:
+  paramInstanceProfileName:
+    Description: Unique name for a new instance profile
+    Type: String
+    MinLength: 3
+    AllowedPattern: "^[a-zA-Z][a-zA-Z0-9]{1,64}$"
+    ConstraintDescription: Instance profile name must be between 1 and 64 alphanumeric characters in length, starting with an uppercase or lowercase character of the alphabet
+  paramRoleName:
+    Description: Existing role name you want to associate the instance profile with
+    Type: String
+    MinLength: 2
+    ConstraintDescription: Make sure that this role exist
+  paramPath:
+    Description: IAM Path that you want to associate with the instance profile 
+    Type: String
+    AllowedPattern: (^\/$)|(^\/.*\/$)
+    Default: "/"
+
+## =================== RESOURCES ===================
+Resources: 
+  myInstanceProfile: 
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties: 
+      InstanceProfileName: !Ref paramInstanceProfileName
+      Roles: # (required) existing role name to associate with the instance profile 
+      # Note: only one role can be assigned to an EC2 instance at a time, but type is 'List of String'
+        - !Ref paramRoleName
+      Path: !Ref paramPath
+
+## =================== OUTPUT ===================
+Outputs:
+  outputInstanceProfileName:
+    Description: Instance profile name
+    Value: !Ref myInstanceProfile
+  outputInstanceProfileArn:
+    Description: Instance profile ARN
+    Value: !GetAtt myInstanceProfile.Arn
