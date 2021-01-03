@@ -1,0 +1,126 @@
+## =================== VERSION ===================
+AWSTemplateFormatVersion: '2010-09-09'
+
+## =================== DESCRIPTION ===================
+Description: >-
+  AWS CloudFormation sample template
+  Create an IAM Role
+  Optionally embed AWS managed policies, customer managed policies and inline policies in the role
+  AWS doc: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-role.html
+
+## =================== PARAMETERS ===================
+Parameters:
+  paramRoleName:
+    Description: Unique name for a new role within the account
+    Type: String
+    MinLength: 3
+    AllowedPattern: "^[a-zA-Z][a-zA-Z0-9]{1,64}$"
+    ConstraintDescription: Role name must be between 1 and 64 alphanumeric characters in length, starting with an uppercase or lowercase character of the alphabet
+  paramMaxSessionDuration:
+    Description: The maximum session duration (in seconds) that you want to set for the specified role
+    Type: Number
+    MinValue: 3600 # 1 hour
+    MaxValue: 43200 # 12 hours
+    Default: 7200 # 2 hours
+  paramPath:
+    Description: IAM Path that you want to associate with the role 
+    Type: String
+    AllowedPattern: (^\/$)|(^\/.*\/$)
+    Default: "/"
+  paramManagedPolicy:
+    Type: String
+    Description: Select predefined Managed Policy that you want to associate with the role
+    AllowedValues:
+      - DatabaseAdministrator
+      - SystemAdministrator
+      # - MyCustomManaged Policy
+      - View-Only
+      - None
+    Default: None 
+  paramTagValue:
+    Description: Tag value that identifies resources as a target for deployments
+    Type: String
+    Default: DoloresAbernathy
+    AllowedPattern: "[\\x20-\\x7E]*"
+    ConstraintDescription: Must contain only ASCII characters
+
+## =================== MAPPINGS ===================
+Mappings:
+  # listing managed IAM policies
+  # AWS CLI command to get the full list of policies: 'aws iam list-policies'
+  mapManagedPolicies: # AWS and customer managed 
+    DatabaseAdministrator: 
+      ARN: arn:aws:iam::aws:policy/job-function/DatabaseAdministrator
+    SystemAdministrator: 
+      ARN: arn:aws:iam::aws:policy/job-function/SystemAdministrator
+    # example with custom managed IAM policy
+    # CustomS3Admin: # this is Customer Managed Policy - replace arn with your own
+      # ARN: arn:aws:iam::111111111111:policy/customerManagedEC2ReadOnlyPolicy
+      # Important! line below will NOT work because Mapping section does NOT support parameters, pseudo parameters, or intrinsic functions
+      # ARN: !Sub 'arn:aws:iam::${AWS::AccountId}:policy/customerManagedEC2ReadOnlyPolicy'
+    View-Only: 
+      ARN: arn:aws:iam::aws:policy/job-function/ViewOnlyAccess
+    None: 
+      ARN: arn:aws:iam::aws:policy/NoAccess
+
+## =================== CONDITIONS ===================
+Conditions:
+  hasManagedPolicy: # check if any group was specified as an input parameter
+    !Not [!Equals [ !Ref paramManagedPolicy, 'None'] ]
+ 
+## =================== RESOURCES ===================
+Resources:
+  myRole:
+    Type: 'AWS::IAM::Role'
+    Properties: 
+      RoleName: !Ref paramRoleName # give a name to this role
+      Description: IAM role for EC2 instance
+      AssumeRolePolicyDocument: # (required) only one trust policy with a role
+        Version: '2012-10-17'
+        Statement: 
+          - 
+            Effect: Allow
+            Principal: 
+              Service: 
+                - 'ec2.amazonaws.com'
+            Action: 
+              - 'sts:AssumeRole'
+      MaxSessionDuration: !Ref paramMaxSessionDuration
+      Path: !Ref paramPath
+      ManagedPolicyArns: # list of ARNs of IAM managed policies that you want to attach to the role
+        - !If [ hasManagedPolicy, !FindInMap [ mapManagedPolicies, !Ref paramManagedPolicy, ARN], !Ref "AWS::NoValue" ] # find an ARN of specified paramManagedPolicy
+        - arn:aws:iam::aws:policy/AWSCloud9Administrator # provides administrator access to AWS Cloud9
+        # - arn:aws:iam::111111111111:policy/customerManagedEC2ReadOnlyPolicy # use your own customer managed policy
+      Policies: # list of inline policy documents that are embedded in the role
+        - PolicyName: inlineS3ReadOnlyPolicy # give a unique name to this policy
+          PolicyDocument: # JSON policy document
+            Version: '2012-10-17'
+            Statement: # allow read only access to all S3 buckets
+              - Effect: Allow
+                Action:
+                  - 's3:Get*'
+                  - 's3:List*'
+                Resource: '*'
+        - PolicyName: inlineS3CreateBucketOnlyPolicy # give a unique name to this policy
+          PolicyDocument: # JSON policy document
+            Version: '2012-10-17'
+            Statement: # allow create S3 bucket only access
+              - Effect: Allow
+                Action:
+                  - 's3:CreateBucket*'
+                Resource: '*'
+      Tags:
+        - Key: Name
+          Value: !Ref paramTagValue
+
+## =================== OUTPUT ===================
+Outputs:
+  outputRoleName:
+    Description: Role name
+    Value: !Ref myRole
+  outputRoleArn:
+    Description: Role ARN
+    Value: !GetAtt myRole.Arn
+  outputRoleId:
+    Description: Role ID
+    Value: !GetAtt myRole.RoleId
