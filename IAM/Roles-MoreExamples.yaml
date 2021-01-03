@@ -1,0 +1,123 @@
+## =================== VERSION ===================
+AWSTemplateFormatVersion: '2010-09-09'
+
+## =================== DESCRIPTION ===================
+Description: >-
+  AWS CloudFormation sample template. 
+  Create a custom IAM policy and some custom IAM roles with inline and managed policies.
+
+## =================== PARAMETERS ===================
+Parameters:
+  paramUniqueKey:
+    Description: Specify a unique key that identifies resources as a target for deployments
+    Type: String
+    Default: DoloresAbernathy
+    AllowedPattern: "[\\x20-\\x7E]*"
+    ConstraintDescription: Must contain only ASCII characters
+
+## =================== RESOURCES ===================
+Resources:
+
+  # ----------------  Create custom role and attach a custom policy to it ----------------
+  # a) Create a custom role without any policy
+  myCustomRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - 
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Custom IAM role for Lambda
+      Path: '/'
+      RoleName: CustomRole
+      Tags:
+          - Key: Name
+            Value: !Ref paramUniqueKey
+
+  # b) Create a custom policy and attach it to 'myCustomRole'
+  myCustomPolicy:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Join ['', [ !Ref paramUniqueKey, 'CustomPolicy' ]]
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:Get*'
+              - 's3:List*'
+            Resource: '*'
+      Roles:
+        - !Ref myCustomRole # attach 'myCustomRole' to 'myCustomPolicy'
+
+  # ------- Create a custom role with two AWS managed policies --------- 
+  myCustomRoleWithAWSManagedPolicies:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - 
+            Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Custom IAM role for EC2 instance to grand a) read only access to all Kinesis streams and b) full access to CloudWatch
+      ManagedPolicyArns: # use AWS managed policies
+        - arn:aws:iam::aws:policy/AmazonKinesisReadOnlyAccess
+        - arn:aws:iam::aws:policy/CloudWatchFullAccess
+      Path: '/'
+      RoleName: !Join ['', [ !Ref paramUniqueKey, 'CustomRoleWithAWSManagedPolicies' ]]
+      Tags:
+          - Key: Name
+            Value: !Ref paramUniqueKey
+
+  # ------- Create a custom role with two inline policies ---------   
+  myCustomRoleWithInlinePolicies:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          -
+            Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Custom IAM role for EC2 instance to grand a) read only access to all S3 buckets, and b) read only access to Amazon SNS
+      Path: '/'
+      Policies: # create inline policies
+        # inline policy to read only access to all S3 buckets
+        - PolicyName: !Join ['', [ !Ref paramUniqueKey, 'InlinePolicy1' ]]
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action: 
+                  - 's3:Get*'
+                  - 's3:List*'
+                Resource: '*'
+        # inline policy to read only access to Amazon SNS        
+        - PolicyName: !Join ['', [ !Ref paramUniqueKey, 'InlinePolicy2' ]]
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'sns:GetTopicAttributes'
+                  - 'sns:List*'
+                Resource: '*'
+      RoleName: !Join ['', [ !Ref paramUniqueKey, 'CustomRoleWithInlinePolicies' ]]
+      Tags:
+          - Key: Name
+            Value: !Ref paramUniqueKey
