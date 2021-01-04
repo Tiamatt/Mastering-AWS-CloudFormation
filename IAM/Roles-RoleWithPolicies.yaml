@@ -26,17 +26,17 @@ Parameters:
     Description: IAM Path that you want to associate with the role 
     Type: String
     AllowedPattern: (^\/$)|(^\/.*\/$)
-    Default: "/"
+    Default: '/'
   paramManagedPolicy:
     Type: String
     Description: Select predefined Managed Policy that you want to associate with the role
     AllowedValues:
       - DatabaseAdministrator
       - SystemAdministrator
-      # - MyCustomManaged Policy
+      # - MyCustomerManaged Policy
       - View-Only
       - None
-    Default: None 
+    Default: None
   paramTagValue:
     Description: Tag value that identifies resources as a target for deployments
     Type: String
@@ -115,12 +115,12 @@ Resources:
 
 ## =================== OUTPUT ===================
 Outputs:
-  outputRoleName:
+  outputName:
     Description: Role name
     Value: !Ref myRole
-  outputRoleArn:
+  outputArn:
     Description: Role ARN
     Value: !GetAtt myRole.Arn
-  outputRoleId:
+  outputId:
     Description: Role ID
     Value: !GetAtt myRole.RoleId
