@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 
 ## =================== DESCRIPTION ===================
 Description: >-
-  AWS CloudFormation sample template.
+  AWS CloudFormation sample template
   Create a Customer Managed IAM Policy and optionally attach it to IAM user(s), group(s), or(and) role(s)
   AWS doc: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-managedpolicy.html
 
@@ -13,7 +13,7 @@ Parameters:
     Description: IAM Path that you want to associate with the policy 
     Type: String
     AllowedPattern: (^\/$)|(^\/.*\/$)
-    Default: "/"
+    Default: '/'
   paramUsers:
     Description: 'Comma-delimited list of user names to attach the policy to (optional)'
     Type: CommaDelimitedList
@@ -38,13 +38,14 @@ Conditions:
 
 ## =================== RESOURCES ===================
 Resources:
+  # Note, PolicyDocument is the only required field in Properties
   myCustomerManagedPolicyForEC2:
     Type: 'AWS::IAM::ManagedPolicy'
     Properties:
       ManagedPolicyName: customerManagedEC2ReadOnlyPolicy # give a name to this policy
       Description: Customer managed policy for read only access to EC2 instance
       Path: !Ref paramPath
-      PolicyDocument: # JSON policy document 
+      PolicyDocument: # (required) JSON policy document 
         Version: '2012-10-17'
         Statement: # allow read only access to EC2 instance
           - Effect: Allow
@@ -58,6 +59,6 @@ Resources:
 
 ## =================== OUTPUT ===================
 Outputs:
-  outputPolicy:
+  outputName:
     Description: Customer managed policy name
     Value: !Ref myCustomerManagedPolicyForEC2
