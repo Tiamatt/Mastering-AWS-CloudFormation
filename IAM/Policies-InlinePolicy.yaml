@@ -3,8 +3,8 @@ AWSTemplateFormatVersion: '2010-09-09'
 
 ## =================== DESCRIPTION ===================
 Description: >-
-  AWS CloudFormation sample template.
-  Create an Inline IAM Policy that is embedded in the specified IAM user(s), group(s), or(and) role(s).
+  AWS CloudFormation sample template
+  Create an Inline IAM Policy that is embedded in the specified IAM user(s), group(s), or(and) role(s)
   AWS doc: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-iam-policy.html
 
 ## =================== PARAMETERS ===================
@@ -36,8 +36,8 @@ Resources:
   myInlinePolicyForS3ReadOnly:
     Type: 'AWS::IAM::Policy'
     Properties:
-      PolicyName: inlineS3ReadOnlyPolicy # give a name to this policy
-      PolicyDocument: # JSON policy document
+      PolicyName: inlineS3ReadOnlyPolicy # (required) give a name to this policy
+      PolicyDocument: # (required) JSON policy document
         Version: '2012-10-17'
         Statement: # allow read only access to all S3 buckets
           - Effect: Allow
@@ -45,13 +45,13 @@ Resources:
               - 's3:Get*'
               - 's3:List*'
             Resource: '*'
-      # Important! Groups, Roles, and Users properties are optional. However, you must specify at least one of these properties.
+      # Note, Groups, Roles, and Users fields are optional. However, you must specify at least one of these fields
       Users: !If [ hasUsers, !Ref paramUsers, !Ref "AWS::NoValue"] # attach this policy to the list of specified users if any
       Groups: !If [ hasGroups, !Ref paramGroups, !Ref "AWS::NoValue"] # attach this policy to the list of specified groups if any
       Roles: !If [ hasRoles, !Ref paramRoles, !Ref "AWS::NoValue"] # attach this policy to the list of specified roles if any
 
 ## =================== OUTPUT ===================
 Outputs:
-  outputPolicy:
+  outputName:
     Description: Inline policy name
     Value: !Ref myInlinePolicyForS3ReadOnly
