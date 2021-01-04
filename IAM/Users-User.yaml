@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 
 ## =================== DESCRIPTION ===================
 Description: >-
-  AWS CloudFormation sample template. 
+  AWS CloudFormation sample template 
   Create an IAM User and optionally attach it to IAM group(s)
   AWS doc: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-iam-user.html
 
@@ -28,7 +28,7 @@ Parameters:
     Description: IAM Path that you want to associate with the user 
     Type: String
     AllowedPattern: (^\/$)|(^\/.*\/$)
-    Default: "/"
+    Default: '/'
   paramTagValue:
     Description: Tag value that identifies resources as a target for deployments
     Type: String
@@ -55,3 +55,12 @@ Resources:
       Tags:
         - Key: Name
           Value: !Ref paramTagValue
+
+## =================== OUTPUT ===================
+Outputs:
+  outputName:
+    Description: User name
+    Value: !Ref myUser
+  outputArn:
+    Description: User ARN
+    Value: !GetAtt myUser.Arn
