@@ -3,7 +3,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 
 ## =================== DESCRIPTION ===================
 Description: >-
-  AWS CloudFormation sample template. 
+  AWS CloudFormation sample template
   Create an IAM User and optionally attach it to IAM group(s)
   Optionally embed AWS managed policies, customer managed policies and inline policies in the user
   AWS doc: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-properties-iam-user.html
@@ -29,7 +29,7 @@ Parameters:
     Description: IAM Path that you want to associate with the user 
     Type: String
     AllowedPattern: (^\/$)|(^\/.*\/$)
-    Default: "/"
+    Default: '/'
   paramManagedPolicy:
     Type: String
     Description: Select predefined Managed Policy that you want to associate with the user
@@ -41,12 +41,6 @@ Parameters:
       - View-Only
       - None
     Default: None 
-  # paramUniqueKey:
-  #   Description: Unique suffix for inline policies
-  #   Type: String
-  #   Default: DoloresAbernathy
-  #   AllowedPattern: ^[a-zA-Z][a-zA-Z]{1,20}$
-  #   ConstraintDescription: Must contain only ASCII characters
   paramTagValue:
     Description: Tag value that identifies resources as a target for deployments
     Type: String
@@ -121,9 +115,9 @@ Resources:
 
 ## =================== OUTPUT ===================
 Outputs:
-  outputUserName:
+  outputName:
     Description: User name
     Value: !Ref myUser
-  outputUser:
+  outputArn:
     Description: User ARN
     Value: !GetAtt myUser.Arn
