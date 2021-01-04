@@ -14,7 +14,7 @@ Parameters:
     Description: IAM Path that you want to associate with the group 
     Type: String
     AllowedPattern: (^\/$)|(^\/.*\/$)
-    Default: "/"
+    Default: '/'
 
 ## =================== RESOURCES ===================
 Resources:
@@ -26,7 +26,7 @@ Resources:
       ManagedPolicyArns: # list of ARNs of IAM managed policies that you want to attach to the group
         - arn:aws:iam::aws:policy/AWSCloud9Administrator # provide administrator access to AWS Cloud9
         - arn:aws:iam::aws:policy/AmazonAPIGatewayAdministrator # provide full access to create/edit/delete APIs in Amazon API Gateway
-        # - arn:aws:iam::111111111111:policy/customerManagedBlahBlahPolicy # use your own customer managed policy specifing its ARN
+        # - arn:aws:iam::111111111111:policy/customerManagedBlahBlahPolicy # use your own customer managed policy specifying its ARN
       Policies: # list of inline policy documents that are embedded in the group
         - PolicyName: inlineCloudWatchLogsPolicy # give a unique name to this policy
           PolicyDocument: # JSON policy document
@@ -41,9 +41,9 @@ Resources:
 
 ## =================== OUTPUT ===================
 Outputs:
-  outputGroupName:
+  outputName:
     Description: Group name
     Value: !Ref myGroup
-  outputGroupARN:
+  outputARN:
     Description: Group ARN
     Value: !GetAtt myGroup.Arn                
