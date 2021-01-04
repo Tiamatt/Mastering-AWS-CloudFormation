@@ -24,7 +24,7 @@ Parameters:
     Description: IAM Path that you want to associate with the instance profile 
     Type: String
     AllowedPattern: (^\/$)|(^\/.*\/$)
-    Default: "/"
+    Default: '/'
 
 ## =================== RESOURCES ===================
 Resources: 
@@ -39,9 +39,9 @@ Resources:
 
 ## =================== OUTPUT ===================
 Outputs:
-  outputInstanceProfileName:
+  outputName:
     Description: Instance profile name
     Value: !Ref myInstanceProfile
-  outputInstanceProfileArn:
+  outputArn:
     Description: Instance profile ARN
     Value: !GetAtt myInstanceProfile.Arn
