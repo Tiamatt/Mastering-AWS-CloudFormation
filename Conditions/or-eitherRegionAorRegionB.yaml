@@ -1,0 +1,22 @@
+## =================== DESCRIPTION ===================
+Description: >-
+  AWS CloudFormation sample template 
+  Playground for 'Conditions' section - using 'AWS::NoValue'
+  Attach key pair to EC2 instance instance conditionally:
+  - if region is either 'us-east-1' or 'us-east-2' then attach 'myPpkKeyPairA' key pair
+  - otherwise (for other regions) attach 'myPpkKeyPairB' key pair
+  Note, you need to create 'myPpkKeyPairA' and 'myPpkKeyPairB' key pairs prior to run CF stack
+
+## =================== CONDITIONS ===================
+Conditions:
+  isRegionForKeyA: !Or [!Equals [!Ref 'AWS::Region', us-east-1], !Equals [!Ref 'AWS::Region', us-east-2]]      
+
+## =================== RESOURCES ===================
+Resources:
+  
+  myEC2Instance: # create a new EC2 instance
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: 'ami-0ff8a91507f77f867'  
+      InstanceType: t2.micro
+      KeyName: !If [isRegionForKeyA, myPpkKeyPairA, myPpkKeyPairB] 
