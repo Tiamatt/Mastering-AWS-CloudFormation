@@ -1,0 +1,56 @@
+## =================== DESCRIPTION ===================
+Description: >-
+  AWS CloudFormation sample template 
+  Playground for 'Conditions' section - using condition inside condition
+  - if PROD then attach SecurityGroups for PROD to EC2 instance
+  - otherwise (if DEV, QA or UAT) then attach SecurityGroups for non-PROD to EC2 instance
+
+## =================== PARAMETERS ===================
+Parameters:
+  paramEnvironment:
+    Description: Select the environment 
+    Type: String
+    Default: dev # by default it is 'dev' environment
+    AllowedValues: 
+      - dev
+      - prod
+      - qa
+      - uat
+    ConstraintDescription: Must be development, production, QA or UAT
+
+## =================== CONDITIONS ===================
+Conditions:
+  isProd: !Equals [!Ref paramEnvironment, prod] # if prod then TRUE, otherwise FALSE       
+  isNonProd: !Not [{Condition: isProd}] # if non-prod then TRUE, otherwise FALSE  
+
+## =================== RESOURCES ===================
+Resources:
+  
+  myEC2Instance: # create a new EC2 instance
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: 'ami-0ff8a91507f77f867'  
+      InstanceType: !If [isProd, t2.micro,  t2.nano ] # if 'prod' then t2.micro, otherwise t2.nano 
+      SecurityGroups: !If [isProd, [!Ref myHTTPSSecurityGroupForProd], [!Ref myHTTPSSecurityGroupForNonProd] ]
+
+  myHTTPSSecurityGroupForProd: # create a new Security Group for HTTPS only if PROD
+    Type: 'AWS::EC2::SecurityGroup'
+    Condition: isProd # If PROD
+    Properties:
+      GroupDescription: Enable HTTPS access via port 443
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          CidrIp:  0.0.0.0/0
+          
+  myHTTPSSecurityGroupForNonProd: # create a new Security Group for HTTPS only if non-PROD
+    Type: 'AWS::EC2::SecurityGroup'
+    Condition: isNonProd # if non-PROD
+    Properties:
+      GroupDescription: Enable HTTPS access via port 443
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          CidrIp:  0.0.0.0/0        
