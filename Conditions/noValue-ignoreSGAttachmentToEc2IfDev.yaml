@@ -1,7 +1,10 @@
 ## =================== DESCRIPTION ===================
 Description: >-
-  AWS CloudFormation sample template. 
-  Playground for 'Conditions' section - Attach SecurityGroups to EC2 instance conditionally (if PROD only)
+  AWS CloudFormation sample template 
+  Playground for 'Conditions' section - using 'AWS::NoValue'
+  Attach SecurityGroups to EC2 instance conditionally:
+  - if PROD then attach
+  - otherwise (if DEV) then ingnore
 
 ## =================== PARAMETERS ===================
 Parameters:
@@ -20,14 +23,15 @@ Conditions:
 
 ## =================== RESOURCES ===================
 Resources:
+  
   myEC2Instance: # create a new EC2 instance
     Type: 'AWS::EC2::Instance'
     Properties:
       ImageId: 'ami-0ff8a91507f77f867'  
-      InstanceType: !If [isProd, t2.micro,  t1.micro ] # if 'prod', then t2.micro, (else) if 'dev' then t2.nano otherwise (if 'qa') then t1.micro  
-      SecurityGroups: !If [isProd, [!Ref myHTTPSSecurityGroup], !Ref 'AWS::NoValue'] # if PROD only then attach SecurityGroups 
+      InstanceType: !If [isProd, t2.micro,  t1.nano ] # if 'prod' then t2.micro, otherwise t2.nano 
+      SecurityGroups: !If [isProd, [!Ref myHTTPSSecurityGroup], !Ref 'AWS::NoValue'] # if PROD then attach SecurityGroups, otherwise ignore
 
-  myHTTPSSecurityGroup: # if PROD then create a new Security Group for HTTPS
+  myHTTPSSecurityGroup: # create a new Security Group for HTTPS only if PROD
     Type: 'AWS::EC2::SecurityGroup'
     Condition: isProd
     Properties:
