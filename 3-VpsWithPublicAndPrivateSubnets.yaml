@@ -1,9 +1,12 @@
+## =================== VERSION ===================
 AWSTemplateFormatVersion: 2010-09-09
 
+## =================== DESCRIPTION ===================
 Description: >-
   AWS CloudFormation sample template. 
   Create a custom VPC with a pair of public and private subnets spread across two AZs
 
+## =================== PARAMETERS ===================
 Parameters:
   paramVpcCIDR:
     Description: Enter the IP range (CIDR notation) for VPC
@@ -30,6 +33,7 @@ Parameters:
     Type: String
     Default: DaenerysTargaryen
 
+## =================== RESOURCES ===================
 Resources:
   # ----------------  Step 1 ----------------
   # a) Create a VPC
@@ -210,6 +214,7 @@ Resources:
       RouteTableId: !Ref myPrivateRouteTable2
       SubnetId: !Ref myPrivateSubnet2
 
+## =================== OUTPUTS ===================
 Outputs:
   outputVPC:
     Description: A reference to the created VPC
