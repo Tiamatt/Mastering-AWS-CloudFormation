@@ -1,0 +1,40 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+## =================== DESCRIPTION =================== ##
+Description: >-
+  AWS CloudFormation template 
+  Playground for 'userDataAndMetadata'
+  Step 0. Follow README in '0-source-code' folder to create S3 bucket and upload source code there
+  Step 1. Create EC2 intance with attached SG (with SSH and HTTP ports) 
+
+## =================== PARAMETERS =================== ##
+Parameters:
+  paramEC2KeyPair:
+    Description: Specify an EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+
+## =================== RESOURCES =================== ##
+Resources:
+  
+  myEC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: ami-047a51fa27710816e # for us-east-1, Amazon Linux 2 (64-bit x86), free tier eligible
+      InstanceType: t2.micro # free tier eligible
+      KeyName: !Ref paramEC2KeyPair
+      SecurityGroups: 
+        - !Ref mySecurityGroup
+
+  mySecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH and HTTP access via port 22 and 8080
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0 
+        - IpProtocol: tcp
+          FromPort: '8080'
+          ToPort: '8080'
+          CidrIp: 0.0.0.0/0
