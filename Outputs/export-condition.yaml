@@ -1,0 +1,57 @@
+## =================== DESCRIPTION ===================
+Description: >-
+  AWS CloudFormation sample template 
+  Playground for 'Outputs' section - using Condition
+  Attach SecurityGroups to EC2 instance and export it conditionally:
+  - if PROD then attach and export
+  - otherwise (if DEV) ingnore
+
+## =================== PARAMETERS ===================
+Parameters:
+  paramEnvironment: # ask a user to define whether it is 'dev' or 'prod' environment
+    Description: Select the environment 
+    Type: String
+    Default: dev # by default it is 'dev' environment
+    AllowedValues: 
+      - dev
+      - prod
+    ConstraintDescription: Must be development or production 
+
+## =================== CONDITIONS ===================
+Conditions:
+  isProd: !Equals [!Ref paramEnvironment, prod] # if 'prod' then TRUE, otherwise FALSE       
+
+## =================== RESOURCES ===================
+Resources:
+  
+  myEC2Instance: # create a new EC2 instance
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: 'ami-0ff8a91507f77f867'  
+      InstanceType:  t2.micro 
+      SecurityGroups: !If [isProd, [!Ref myHTTPSSecurityGroup], !Ref 'AWS::NoValue'] # if PROD then attach SecurityGroups, otherwise ignore
+
+  myHTTPSSecurityGroup: # create a new Security Group for HTTPS only if PROD
+    Type: 'AWS::EC2::SecurityGroup'
+    Condition: isProd
+    Properties:
+      GroupDescription: Enable HTTPS access via port 443
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '443'
+          ToPort: '443'
+          CidrIp:  0.0.0.0/0
+
+## =================== OUTPUTS =================== ##
+Outputs:
+  outputAZ:
+    Description: Instance AZ 
+    Value: !GetAtt myEC2Instance.AvailabilityZone
+    Export: #export
+      Name: !Sub "${AWS::StackName}-InstanceAz-Exported" 
+  outputHTTPSSecurityGroup: # if PROD then export 
+    Description: My HTTPS SG
+    Value: !Ref myHTTPSSecurityGroup
+    Condition: isProd # only if PROD
+    Export: #export
+      Name: myHTTPSSecurityGroup-Exported
