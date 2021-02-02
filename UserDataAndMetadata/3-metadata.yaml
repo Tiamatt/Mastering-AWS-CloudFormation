@@ -1,0 +1,113 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+## =================== DESCRIPTION =================== ##
+Description: >-
+  AWS CloudFormation template 
+  Playground for 'userDataAndMetadata'
+  Step 0. Follow README in '0-source-code' folder to create S3 bucket and upload source code there
+  Step 1. Create EC2 intance with attached SG (with SSH and HTTP ports) 
+  Step 2. Include 'Metadata' section on EC2 instance for the cfn-init helper script
+    - add AWS::CloudFormation::Init
+    - add configuration sections: packages, groups, users, sources, files, commands, services
+  Step 3. Add logic for packages, groups, users, sources, files, commands, services
+
+  AWS docs:
+  - Metadata - https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/metadata-section-structure.html 
+  - AWS::CloudFormation::Init - https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-init.html
+
+
+## =================== PARAMETERS =================== ##
+Parameters:
+  paramEC2KeyPair:
+    Description: Specify an EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+
+## =================== RESOURCES =================== ##
+Resources:
+  
+  myEC2Instance:
+    Type: 'AWS::EC2::Instance'
+    Metadata:
+      Comment: Step 3. Add logic for packages, groups, users, sources, files, commands, ser
+      AWS::CloudFormation::Init: # need it for cfn-init helper script
+        config: 
+          # order matters: packages, groups, users, sources, files, commands, and then services
+          # for different order you need to use configSets and different config keys 
+          packages: # use to download and install pre-packaged apps and components
+             # supports: yum, apt, msi, python, rpm, rubygems
+            yum:
+              # install 3 packages
+              java-1.8.0-openjdk.x86_64: []
+              java-1.8.0-openjdk-devel: []
+              tomcat8: []
+          groups: # for Linux/Unix groups (not for Windows)
+            groupone: {}
+            grouptwo:
+              gid: "501"
+          users: # use the users key to create Linux/UNIX users on the EC2 instance (not for Windows)
+            user1:
+              groups:
+                - groupone
+                - grouptwo
+              uid: "501"
+              homeDir: "/home"                  
+          sources: # use to download and unpack file in a target directory on the EC2 instance (for both Linux and Windows))
+            # use S3 bucket url which output of '0-source-code/S3-bucket.yaml' template
+            /tmp: "https://bucket-for-user-data-and-metadata-app.s3.amazonaws.com/demo1.zip"
+          files: # use to create files on the EC2 instance
+            "/etc/cfn/cfn-hup.conf":  # cfn-hup
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
+                interval=7
+              mode: "000400"
+              owner: "root"
+              group: "root"
+            "/etc/cfn/hooks.d/cfn-auto-reloader.conf":  # cfn-auto-reloader
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.myEC2Instance.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource myEC2Instance --region ${AWS::Region}
+              mode: "000400"
+              owner: "root"
+              group: "root"                      
+          commands: # use to execute commands on the EC2 instance
+            test1:
+               command: "chmod 755 demo.war"
+               cwd: "/tmp"                            
+            test2:
+               command: "sudo yum -y erase java-1.7.0-openjdk.x86_64"
+               cwd: "~"         
+            test3:               
+              command: "rm -rf demo*"
+              cwd: "/var/lib/tomcat8/webapps"
+            test4:
+              command: "cp demo.war /var/lib/tomcat8/webapps"                                  
+              cwd: "/tmp"
+          services: # use to define which services should be enabled or disabled when the instance is launched
+            sysvinit:
+              tomcat8: 
+                enabled: "true"
+                ensureRunning: "true"
+    Properties:
+      ImageId: ami-047a51fa27710816e # for us-east-1, Amazon Linux 2 (64-bit x86), free tier eligible
+      InstanceType: t2.micro # free tier eligible
+      KeyName: !Ref paramEC2KeyPair
+      SecurityGroups: 
+        - !Ref mySecurityGroup
+
+  mySecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH and HTTP access via port 22 and 8080
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0 
+        - IpProtocol: tcp
+          FromPort: '8080'
+          ToPort: '8080'
+          CidrIp: 0.0.0.0/0
