@@ -1,0 +1,92 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+## =================== DESCRIPTION =================== ##
+Description: >-
+  AWS CloudFormation sample template 
+  Playground for 'Metadata' section
+  Group, sort and label parameters using ParameterGroups and ParameterLabels
+
+## =================== METADATA =================== ##
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups: # specify group names, the parameters in each group, and the order in which the parameters are shown
+      - Label:
+          default: "EC2 Instance Configuration"    
+        Parameters: # order of parameters
+          - paramAZ
+          - paramInstanceType
+          - paramImageId
+          - paramEC2KeyPair
+      - Label:
+          default: "Environment Configuration"          
+        Parameters: # order of parameters
+          - paramEnvironment  
+    ParameterLabels: # map parameters and their friendly names that CF console shows when a stack is created or updated
+      paramEnvironment:
+        default: "Which environment you want to create this instance in?"
+      paramAZ:
+        default: "Which AZ you want to create this instance in?"
+      paramEC2KeyPair:
+        default: "Be aware that once keyname is selected you can NOT change it unless instance replaced"
+
+## =================== PARAMETERS =================== ##
+Parameters:
+  paramEnvironment:
+    Description: Select the environment 
+    Type: String
+    Default: dev
+    AllowedValues: 
+      - dev
+      - prod
+    ConstraintDescription: Must be development or production
+  paramInstanceType:
+    Description: Specify EC2 instance type
+    Type: String
+    AllowedValues:
+      - t1.micro
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+    Default: t2.micro # free tier eligible
+  paramImageId:
+    Description: Specify AMI Id for EC2 instance
+    Type: String
+    Default: ami-0be2609ba883822ec # for us-east-1, Amazon Linux, free tier eligible
+    ConstraintDescription: Must be a valid AMI and based on Amazon Linux
+  paramEC2KeyPair:
+    Description: Specify an EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+  paramAZ:
+    Description: Select AZ
+    Type: String
+    AllowedValues:
+      - us-east-1a
+      - us-east-1b
+      - us-east-1c
+    Default: us-east-1a
+
+## =================== CONDITIONS =================== ##
+Conditions:
+  isProd: !Equals [!Ref paramEnvironment, prod] # if 'prod' then TRUE, otherwise FALSE  
+
+## =================== RESOURCES =================== ##
+Resources:
+  myEC2Instance:   # create a new EC2 instance
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: !Ref paramImageId
+      InstanceType: !Ref paramInstanceType
+      KeyName: !Ref paramEC2KeyPair
+      AvailabilityZone: !Ref paramAZ
+      SecurityGroups: !If [isProd, [!Ref mySSHSecurityGroup], !Ref 'AWS::NoValue'] # if PROD then attach SecurityGroups, otherwise ignore
+  mySSHSecurityGroup:   # create a new Security Group for SSH
+    Type: 'AWS::EC2::SecurityGroup'
+    Condition: isProd
+    Properties:
+      GroupDescription: Enable SSH access via port 22
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
