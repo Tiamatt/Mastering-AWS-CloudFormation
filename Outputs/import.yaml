@@ -1,0 +1,28 @@
+## =================== DESCRIPTION =================== ##
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >- 
+  AWS CloudFormation Ec2InstanceWithSecurityGroup template 
+  Playground for 'Outputs' section - using Ref::ImportValue
+  Import EC2 instanceA's AZ and SecurityGroup here
+  First, create a stack from export.yaml template, then create a stack from import.yaml template
+
+## =================== RESOURCES =================== ##
+Resources:
+  myEC2InstanceB: # create a new EC2 instance
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: 'ami-0be2609ba883822ec'
+      InstanceType: t2.nano
+      SecurityGroups:
+        - !ImportValue mySSHSecurityGroup-Exported # import SecurityGroup
+      AvailabilityZone: !ImportValue  myInstanceAZ-Exported  # import AZ of instance A
+
+## =================== OUTPUTS =================== ##
+Outputs:
+  outputImportedAZ:
+    Description: Imported AZ
+    Value: !ImportValue  myInstanceAZ-Exported
+  outputImportedSSHSecurityGroup:
+    Description: Imported SSH SG
+    Value: !ImportValue mySSHSecurityGroup-Exported

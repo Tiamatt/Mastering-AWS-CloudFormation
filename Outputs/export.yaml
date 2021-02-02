@@ -1,0 +1,40 @@
+## =================== DESCRIPTION =================== ##
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: >-
+  AWS CloudFormation Ec2InstanceWithSecurityGroup template 
+  Playground for 'Outputs' section - using Export
+  Export EC2 instanceA's AZ and SecurityGroup from here
+  First, create a stack from export.yaml template, then create a stack from import.yaml template
+
+## =================== RESOURCES =================== ##
+Resources:
+  myEC2InstanceA: # create a new EC2 instance
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: 'ami-0be2609ba883822ec'
+      InstanceType: t2.nano
+      SecurityGroups:
+        - !Ref mySSHSecurityGroup
+  mySSHSecurityGroup: # create a new Security Group for SSH
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH access via port 22
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+
+## =================== OUTPUTS =================== ##
+Outputs:
+  outputAZ:
+    Description: AZ of the newly created EC2 instance
+    Value: !GetAtt myEC2InstanceA.AvailabilityZone
+    Export: #export
+      Name: myInstanceAZ-Exported 
+  outputSSHSecurityGroup:
+    Description: My SSH SG
+    Value: !Ref mySSHSecurityGroup
+    Export: #export
+      Name: mySSHSecurityGroup-Exported
