@@ -1,0 +1,74 @@
+AWSTemplateFormatVersion: 2010-09-09
+ 
+## =================== DESCRIPTION =================== ##
+Description: >-
+  AWS CloudFormation sample template. 
+  Create a custom VPC with a public subnet
+
+## =================== PARAMETERS =================== ##
+Parameters:
+  paramEC2KeyPair:
+    Description: Specify an EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+  # the following paramaters are copied from '1-vpc-as-nested-stack' template
+  paramVpcCIDR:
+    Description: Enter the IP range (CIDR notation) for VPC
+    Type: String
+    Default: 10.192.0.0/16
+  paramPublicSubnetCIDR:
+    Description: Enter the IP range (CIDR notation)  for the public subnet in AZ A
+    Type: String
+    Default: 10.192.10.0/24
+
+## =================== RESOURCES =================== ##
+Resources:
+
+  myVcpNestedStack: # refer to '1-vpc-as-nested-stack' template
+    Type: AWS::CloudFormation::Stack
+    Properties: 
+      TemplateURL: 'https://bucket-for-nested-stacks.s3.amazonaws.com/1-vpc-as-nested-stack.yaml'
+      Parameters:
+        paramVpcCIDR: !Ref paramVpcCIDR
+        paramPublicSubnetCIDR: !Ref paramPublicSubnetCIDR
+      TimeoutInMinutes: 5 # in minutes
+  mySGNestedStack: # refer to '2-sg-as-nested-stack' template
+    Type: AWS::CloudFormation::Stack
+    Properties: 
+      TemplateURL: 'https://bucket-for-nested-stacks.s3.amazonaws.com/2-sg-as-nested-stack.yaml'
+      Parameters:
+        paramVpcId: !GetAtt myVcpNestedStack.Outputs.outputVpcId
+      TimeoutInMinutes: 5 # in minutes
+
+
+  myEC2Instance:   # create a new EC2 instance
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      # Kalyan Reddy: If you are using  Linux AMI 2-series, mostly it might not work because AWS has done lot and lot of changes from AMI-1 to AMI-2 series VMs
+      # ImageId: ami-047a51fa27710816e  # Amazon Linux 2 64-bit x86, Free tier eligible
+      ImageId:  ami-0080e4c5bc078760e # amzn-ami-hvm-2018.03.0.20181129-x86_64-gp2 - Amazon Linux AMI 2018.03.0.20181129 x86_64 HVM gp2
+      InstanceType: t2.micro # Free tier eligible
+      KeyName: !Ref paramEC2KeyPair
+      NetworkInterfaces:
+        - AssociatePublicIpAddress: "true"
+          DeviceIndex: "0"
+          SubnetId: !GetAtt myVcpNestedStack.Outputs.outputPublicSubnetId
+          GroupSet:
+            - !GetAtt mySGNestedStack.Outputs.outputSecurityGroup
+      UserData: 
+        Fn::Base64: |
+          #!/bin/bash
+          sudo yum update
+          sudo yum -y erase java-1.7.0-openjdk.x86_64
+          sudo yum -y install java-1.8.0-openjdk.x86_64
+          sudo yum -y install java-1.8.0-openjdk-devel
+          sudo yum -y install tomcat8
+          service tomcat8 start
+          mkdir /usr/share/tomcat8/webapps/ROOT
+          touch /usr/share/tomcat8/webapps/ROOT/index.html
+          echo "Cloud Formation Tomcat8" > /usr/share/tomcat8/webapps/ROOT/index.html
+
+## =================== OUTPUTS =================== ##
+Outputs:
+  AppURL:
+    Description: Application URL to access
+    Value: !Sub 'http://${myEC2Instance.PublicDnsName}:8080/index.html'    
