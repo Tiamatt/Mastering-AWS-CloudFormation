@@ -35,7 +35,9 @@ Resources:
           commands: # coming soon...
           services: # coming soon...
     Properties:
-      ImageId: ami-047a51fa27710816e # for us-east-1, Amazon Linux 2 (64-bit x86), free tier eligible
+      # Kalyan Reddy: If you are using  Linux AMI 2-series, mostly it might not work because AWS has done lot and lot of changes from AMI-1 to AMI-2 series VMs
+      #ImageId: ami-047a51fa27710816e # amzn2-ami-hvm-2.0.20210126.0-x86_64-gp2 - ami-047a51fa27710816e - Amazon Linux 2 AMI 2.0.20210126.0 x86_64 HVM gp2, free tier eligible
+      ImageId:  ami-0080e4c5bc078760e # amzn-ami-hvm-2018.03.0.20181129-x86_64-gp2 - Amazon Linux AMI 2018.03.0.20181129 x86_64 HVM gp2
       InstanceType: t2.micro # free tier eligible
       KeyName: !Ref paramEC2KeyPair
       SecurityGroups: 

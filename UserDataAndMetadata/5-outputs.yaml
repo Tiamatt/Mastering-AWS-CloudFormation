@@ -10,11 +10,11 @@ Description: >-
     - add AWS::CloudFormation::Init
     - add configuration sections: packages, groups, users, sources, files, commands, services
   Step 3. Add logic for packages, groups, users, sources, files, commands, services
+  Step 4. Create UserData for EC2 instance that uses Metadata config data from AWS::CloudFormation::Init section
 
   AWS docs:
   - Metadata - https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/metadata-section-structure.html 
   - AWS::CloudFormation::Init - https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-init.html
-
 
 ## =================== PARAMETERS =================== ##
 Parameters:
@@ -99,6 +99,18 @@ Resources:
       KeyName: !Ref paramEC2KeyPair
       SecurityGroups: 
         - !Ref mySecurityGroup
+      UserData: # add userdata that uses AWS::CloudFormation::Init config data
+        "Fn::Base64": 
+          !Sub |
+            #!/bin/bash -xe
+            # Get latest CloudFormation package - these packages change frequently
+            yum update -y aws-cfn-bootstrap
+            # Start cfn-init to install all Metadata content (packages, sources, files, commands and services)
+            /opt/aws/bin/cfn-init -s ${AWS::StackId} -r myEC2Instance --region ${AWS::Region} || error_exit 'Failed to run cfn-init'
+            # Signal the status from cfn-init 
+            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackId} --resource myEC2Instance --region ${AWS::Region}
+            # Start cfn-hup daemon so that it will keep listening to any changes to EC2 Instance Metadata. 
+            /opt/aws/bin/cfn-hup || error_exit 'Failed to start cfn-hup'
 
   mySecurityGroup:
     Type: 'AWS::EC2::SecurityGroup'
@@ -113,3 +125,9 @@ Resources:
           FromPort: '8080'
           ToPort: '8080'
           CidrIp: 0.0.0.0/0
+
+## =================== OUTPUTS =================== ##
+Outputs:
+  outputAppURL:
+    Description: Application URL to access
+    Value: !Sub 'http://${myEC2Instance.PublicDnsName}:8080/demo/hello' 
