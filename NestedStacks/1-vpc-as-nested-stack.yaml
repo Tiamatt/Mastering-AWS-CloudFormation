@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: 2010-09-09
+ 
+## =================== DESCRIPTION =================== ##
+Description: >-
+  AWS CloudFormation sample template. 
+  Create a custom VPC with a public subnet
+
+## =================== PARAMETERS =================== ##
+Parameters:
+  paramVpcCIDR:
+    Description: Enter the IP range (CIDR notation) for VPC
+    Type: String
+    Default: 10.192.0.0/16
+  paramPublicSubnetCIDR:
+    Description: Enter the IP range (CIDR notation)  for the public subnet in AZ A
+    Type: String
+    Default: 10.192.10.0/24
+
+## =================== RESOURCES ===================
+Resources:
+
+  myVPC: # Create a VPC
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref paramVpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+
+  myInternetGateway: # Create a Internet Gateway
+    Type: AWS::EC2::InternetGateway
+
+  myVPCGatewayAttachment: # Attach the Internet Gateway to the VPC
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref myVPC
+      InternetGatewayId: !Ref myInternetGateway
+
+  myPublicRouteTable: # Create a public route table for the VPC (will be public once it is associated with the Internet Gateway)
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myVPC
+
+  myPublicRoute: # Associate the public route table with the Internet Gateway
+    Type: AWS::EC2::Route
+    DependsOn: myVPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref myPublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref myInternetGateway
+
+  myPublicSubnet: # Create a public subnet in AZ 1 (will be public once it is associated with public route table)
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ] # AZ 1
+      CidrBlock: !Ref paramPublicSubnetCIDR
+      MapPublicIpOnLaunch: true
+
+  myPublicSubnetRouteTableAssociation: # Associate the public route table with the public subnet in AZ 1
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref myPublicRouteTable
+      SubnetId: !Ref myPublicSubnet
+
+## =================== OUTPUTS =================== ##
+Outputs:
+  outputVpcId:
+    Description: VPC ID
+    Value: !Ref myVPC
+  outputPublicSubnetId:
+    Description: Public subnet ID
+    Value: !Ref myPublicSubnet
