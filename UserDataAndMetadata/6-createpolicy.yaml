@@ -12,10 +12,13 @@ Description: >-
   Step 3. Add logic for packages, groups, users, sources, files, commands, services
   Step 4. Create UserData for EC2 instance that uses Metadata config data from AWS::CloudFormation::Init section
   Step 5. Add 'Outputs' section with app url
+  Step 6. Add CreationPolicy attribute that helps to prevent instance status from reaching create complete until AWS CloudFormation receives a specified number of success signals or the timeout period is exceeded
 
-  AWS docs:
-  - Metadata - https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/metadata-section-structure.html 
-  - AWS::CloudFormation::Init - https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-init.html
+
+# AWS docs:
+#  - Metadata - https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/metadata-section-structure.html 
+#  - AWS::CloudFormation::Init - https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-init.html
+# - CreationPolicy attribute - https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-attribute-creationpolicy.html
 
 ## =================== PARAMETERS =================== ##
 Parameters:
@@ -28,6 +31,9 @@ Resources:
   
   myEC2Instance:
     Type: 'AWS::EC2::Instance'
+    CreationPolicy: # prevent instance status from reaching create complete until AWS CloudFormation receives a specified number of success signals or the timeout period is exceeded
+      ResourceSignal:
+        Timeout: PT5M # wait 5 mins
     Metadata:
       Comment: Step 3. Add logic for packages, groups, users, sources, files, commands, ser
       AWS::CloudFormation::Init: # need it for cfn-init helper script
