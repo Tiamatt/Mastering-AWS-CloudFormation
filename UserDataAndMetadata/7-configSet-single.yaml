@@ -1,0 +1,136 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+## =================== DESCRIPTION =================== ##
+Description: >-
+  AWS CloudFormation template 
+  Playground for 'userDataAndMetadata'
+  Step 7. 
+
+## =================== PARAMETERS =================== ##
+Parameters:
+  paramEC2KeyPair:
+    Description: Specify an EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+
+## =================== RESOURCES =================== ##
+Resources:
+  
+  myEC2Instance:
+    Type: 'AWS::EC2::Instance'
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT5M
+    Metadata:
+      Comment: Step 3. Add logic for packages, groups, users, sources, files, commands, ser
+      AWS::CloudFormation::Init:
+        configSets:
+          App1AndApp2:
+            - App1
+            - App2
+        App1: # config settings for App1
+          packages:
+            yum:
+              java-1.8.0-openjdk.x86_64: []
+              java-1.8.0-openjdk-devel: []
+              tomcat8: []
+          groups:
+            groupone: {}
+            grouptwo:
+              gid: "501"
+          users:
+            user1:
+              groups:
+                - groupone
+                - grouptwo
+              uid: "501"
+              homeDir: "/home"                  
+          sources:
+            /tmp: "https://bucket-for-user-data-and-metadata-app.s3.amazonaws.com/demo1.zip"
+          files:
+            "/etc/cfn/cfn-hup.conf":
+              content: !Sub |
+                [main]
+                stack=${AWS::StackId}
+                region=${AWS::Region}
+                interval=7
+              mode: "000400"
+              owner: "root"
+              group: "root"
+            "/etc/cfn/hooks.d/cfn-auto-reloader.conf":
+              content: !Sub |
+                [cfn-auto-reloader-hook]
+                triggers=post.update
+                path=Resources.myEC2Instance.Metadata.AWS::CloudFormation::Init
+                action=/opt/aws/bin/cfn-init -v --stack ${AWS::StackName} --resource myEC2Instance --region ${AWS::Region}
+              mode: "000400"
+              owner: "root"
+              group: "root"                      
+          commands:
+            test1:
+               command: "chmod 755 demo.war"
+               cwd: "/tmp"                            
+            test2:
+               command: "sudo yum -y erase java-1.7.0-openjdk.x86_64"
+               cwd: "~"         
+            test3:               
+              command: "rm -rf demo*"
+              cwd: "/var/lib/tomcat8/webapps"
+            test4:
+              command: "cp demo.war /var/lib/tomcat8/webapps"                                  
+              cwd: "/tmp"
+          services:
+            sysvinit:
+              tomcat8: 
+                enabled: "true"
+                ensureRunning: "true"
+        App2: # config settings for App2 (create a simple html page)
+          commands:
+            test1:
+              command: "mkdir ROOT"                          
+              cwd: "/var/lib/tomcat8/webapps"
+            test2:
+              command: "echo \"$INDEXCONTENT\" > index.html"              
+              env: 
+                INDEXCONTENT: "Root Page of tomcat from App2"
+              cwd: "/var/lib/tomcat8/webapps/ROOT"
+    Properties:
+      ImageId:  ami-0080e4c5bc078760e
+      InstanceType: t2.micro
+      KeyName: !Ref paramEC2KeyPair
+      SecurityGroups: 
+        - !Ref mySecurityGroup
+      UserData: # in '/opt/aws/bin/cfn-init' section add '--configsets App1AndApp2' right after instance's logical ID
+        "Fn::Base64": 
+          !Sub |
+            #!/bin/bash -xe
+            # Get latest CloudFormation package - these packages change frequently
+            yum update -y aws-cfn-bootstrap
+            # Start cfn-init to install all Metadata content (packages, sources, files, commands and services)
+            /opt/aws/bin/cfn-init -s ${AWS::StackId} -r myEC2Instance --configsets App1AndApp2 --region ${AWS::Region} || error_exit 'Failed to run cfn-init'
+            # Signal the status from cfn-init 
+            /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackId} --resource myEC2Instance --region ${AWS::Region}
+            # Start cfn-hup daemon so that it will keep listening to any changes to EC2 Instance Metadata. 
+            /opt/aws/bin/cfn-hup || error_exit 'Failed to start cfn-hup'
+
+  mySecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: Enable SSH and HTTP access via port 22 and 8080
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0 
+        - IpProtocol: tcp
+          FromPort: '8080'
+          ToPort: '8080'
+          CidrIp: 0.0.0.0/0
+
+## =================== OUTPUTS =================== ##
+Outputs:
+  outputApp1URL: # for App1
+    Description: App1 URL to access
+    Value: !Sub 'http://${myEC2Instance.PublicDnsName}:8080/demo/hello'
+  outputApp2URL: # for App2
+    Description: App2 URL to access
+    Value: !Sub 'http://${myEC2Instance.PublicDnsName}:8080/index.html'
