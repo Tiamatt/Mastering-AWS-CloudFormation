@@ -4,7 +4,15 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
   AWS CloudFormation template 
   Playground for 'userDataAndMetadata'
-  Step 7. Group metadata config keys into configsets. Add config for App1 and App2 
+  Step 8. Add multiple config sets:
+  - SingleAppConfigSet: # for App1 only
+  - DualAppsConfigSet: #  for both App1 and App2
+  - defaut: # for App2 only
+  Now, go to UserData section, find '/opt/aws/bin/cfn-init' line:
+  - for SingleAppConfigSet use '--configsets SingleAppConfigSet'
+  - for DualAppsConfigSet use '--configsets DualAppsConfigSet'
+  - for defaut remove '--configsets BlahBlah'
+  save and run the template!
 
 ## =================== PARAMETERS =================== ##
 Parameters:
@@ -23,10 +31,14 @@ Resources:
     Metadata:
       Comment: Step 3. Add logic for packages, groups, users, sources, files, commands, ser
       AWS::CloudFormation::Init:
-        configSets:
-          App1AndApp2:
+        configSets: # add 3 config sets - SingleAppConfigSet, DualAppsConfigSet, and defaut
+          SingleAppConfigSet: # App1 only
             - App1
+          DualAppsConfigSet: #  both App1 and App2
+            - ConfigSet: "SingleAppConfigSet"
             - App2
+          defaut:  # App2 only
+            - ConfigSet: "DualAppsConfigSet"
         App1: # config settings for App1
           packages:
             yum:
@@ -99,14 +111,14 @@ Resources:
       KeyName: !Ref paramEC2KeyPair
       SecurityGroups: 
         - !Ref mySecurityGroup
-      UserData: # in '/opt/aws/bin/cfn-init' section add '--configsets App1AndApp2' right after instance's logical ID
+      UserData: # in '/opt/aws/bin/cfn-init' section add '--configsets SingleAppConfigSet' right after instance's logical ID
         "Fn::Base64": 
           !Sub |
             #!/bin/bash -xe
             # Get latest CloudFormation package - these packages change frequently
             yum update -y aws-cfn-bootstrap
             # Start cfn-init to install all Metadata content (packages, sources, files, commands and services)
-            /opt/aws/bin/cfn-init -s ${AWS::StackId} -r myEC2Instance --configsets App1AndApp2 --region ${AWS::Region} || error_exit 'Failed to run cfn-init'
+            /opt/aws/bin/cfn-init -s ${AWS::StackId} -r myEC2Instance --configsets DualAppsConfigSet --region ${AWS::Region} || error_exit 'Failed to run cfn-init'
             # Signal the status from cfn-init 
             /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackId} --resource myEC2Instance --region ${AWS::Region}
             # Start cfn-hup daemon so that it will keep listening to any changes to EC2 Instance Metadata. 
