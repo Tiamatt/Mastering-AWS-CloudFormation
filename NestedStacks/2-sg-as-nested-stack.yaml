@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: 2010-09-09
+ 
+## =================== DESCRIPTION =================== ##
+Description: >-
+  AWS CloudFormation sample template. 
+  Create a custom VPC with a public subnet
+
+## =================== PARAMETERS =================== ##
+Parameters:
+  paramVpcId:
+      Description: Select VPC ID for a new security group
+      Type: AWS::EC2::VPC::Id
+
+## =================== RESOURCES =================== ##
+Resources:
+  mySecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Apps Security Group
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '8080'
+          ToPort: '8080'
+          CidrIp: 0.0.0.0/0
+        # - IpProtocol: tcp
+        #   FromPort: '9080'
+        #   ToPort: '9080'
+        #   CidrIp: 0.0.0.0/0          
+      VpcId: !Ref paramVpcId
+
+## =================== OUTPUTS =================== ##
+Outputs:
+  outputSecurityGroup:
+    Description: Security Group ID
+    Value: !Ref mySecurityGroup
