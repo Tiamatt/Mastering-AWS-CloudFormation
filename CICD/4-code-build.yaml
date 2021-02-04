@@ -1,0 +1,87 @@
+## =================== VERSION =================== ##
+AWSTemplateFormatVersion: '2010-09-09'
+
+## =================== DESCRIPTION =================== ##
+Description: >-
+  AWS CloudFormation sample template
+  Create CodeBuild Stack Template
+
+## =================== PARAMETERS =================== ##
+Parameters:
+  paramRepoName:
+    Type: String
+    Description: Name of the repo which contains Rest Application.
+    Default: CICDRepo
+  paramRepoHTTPUrl:
+    Type: String
+    Description: CodeCommit repo HTTP URL. Copy and past CodeCommit's outputCloneUrlHttp here
+  paramArtifactStoreS3Location:
+    Type: String
+    Description: S3 bucket name to store CodeBuild artifacts
+    Default: bucket-for-code-build-artifacts
+
+## =================== RESOURCES =================== ##
+Resources:
+
+  myCodeBuildProject: # 
+    Type: 'AWS::CodeBuild::Project'
+    Properties:
+      Name: myCodeBuildProjectName
+      Description: CodeBuild for .NET Core WebApi project
+      ServiceRole: !GetAtt myCodeBuildRole.Arn
+      Artifacts:
+        Type: S3
+        Name: myCodeBuildProjectArtifactsFolder
+        Location: !Ref paramArtifactStoreS3Location
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+      Source: # get source code from CodeCommit repo
+        Location: !Ref paramRepoHTTPUrl
+        Type: CODECOMMIT
+      TimeoutInMinutes: 15
+
+  myCodeBuildRole: # role for CodeBuild
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: myCodeBuildRoleName
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+      Path: /
+      Policies:
+        - PolicyName: CodeBuildAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - 'codecommit:GitPull'
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${paramRepoName}
+              - Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*
+              - Action:
+                  - 's3:PutObject'
+                  - 's3:GetObject'
+                  - 's3:GetObjectVersion'
+                  - 's3:ListBucket'
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:s3:::codepipeline-${AWS::Region}-*
+                  - !Sub arn:aws:s3:::${paramArtifactStoreS3Location}/*
+                  - !Sub arn:aws:s3:::${paramArtifactStoreS3Location}
+
+## =================== OUTPUT =================== ##      
