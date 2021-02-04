@@ -4,7 +4,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 ## =================== DESCRIPTION =================== ##
 Description: >-
   AWS CloudFormation sample template
-  Create CodeBuild Stack Template
+  Create CodeBuild stack that builds the source code and stores built artifacts in S3 bucket
 
 ## =================== PARAMETERS =================== ##
 Parameters:
