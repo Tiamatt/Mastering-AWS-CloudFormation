@@ -1,4 +1,4 @@
-# Create a new application
+# Create a new application and push it into CodeCommit repo
 
 ## 1. Create a new .NET Core application:
 
