@@ -60,10 +60,10 @@ phases:
   build:
     commands:
       - echo Build started on `date`
-      - dotnet publish -c release -o ./build_output CICD-DotnetCore-WebApp.csproj
+      - dotnet publish -c release -o ./CICD-DotnetCore-WebApp CICD-DotnetCore-WebApp.csproj
 artifacts:
   files:
-    - ./build_output/**/*
+    - ./CICD-DotnetCore-WebApp/**/*
     - scripts/**/*
 ```
 
