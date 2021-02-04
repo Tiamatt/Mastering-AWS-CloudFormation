@@ -1,0 +1,22 @@
+AWSTemplateFormatVersion: '2010-09-09'
+
+## =================== DESCRIPTION =================== ##
+Description: >-
+  AWS CloudFormation template
+  Creates a new S3 bucket to store CodeBuild artifacts
+
+## =================== RESOURCES =================== ##
+Resources:
+  myS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: PublicRead
+      BucketName: bucket-for-code-build-artifacts
+      VersioningConfiguration:
+        Status: Enabled
+
+## =================== OUTPUTS =================== ##
+Outputs:
+  outputsS3Bucket:
+      Value: !Join ['', ['https://', !GetAtt [myS3Bucket, DomainName]]]
+      Description: Domain Name of the Amazon S3 bucket   
