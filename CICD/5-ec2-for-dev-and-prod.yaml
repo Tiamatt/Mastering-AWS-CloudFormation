@@ -1,0 +1,138 @@
+AWSTemplateFormatVersion: 2010-09-09
+ 
+## =================== DESCRIPTION =================== ##
+Description: >-
+  AWS CloudFormation sample template
+  Create two EC2 instances:
+  - dev instance
+  - prod instance
+  Install codedeploy-agent to both instances
+  
+# Useful AWS docs for codedeploy-agent installation:
+# - Verify the CodeDeploy agent for Amazon Linux or RHEL is running https://docs.aws.amazon.com/codedeploy/latest/userguide/codedeploy-agent-operations-verify.html
+# - Install the CodeDeploy agent for Amazon Linux or RHEL https://docs.aws.amazon.com/codedeploy/latest/userguide/codedeploy-agent-operations-install-linux.html
+# - How can I use launch configurations to automatically install the CodeDeploy agent on an Amazon EC2 instance running Amazon Linux or Ubuntu? https://aws.amazon.com/premiumsupport/knowledge-center/codedeploy-agent-launch-configuration/
+
+## =================== PARAMETERS =================== ##
+Parameters:
+  paramEC2KeyPair:
+    Description: Specify an EC2 KeyPair to enable SSH access to the instance
+    Type: AWS::EC2::KeyPair::KeyName
+  paramAppName:
+    Type: String
+    Description: Specify an application Name
+    Default: CICD-DotnetCore-WebApp
+
+## =================== RESOURCES =================== ##
+Resources:
+
+  myDevInstance: # instance for DEV
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: ami-05880939912ddc43d # Amazon Linux 2 with .Net Core, PowerShell, Mono, and MATE Desktop Environment - Free tier eligible
+      InstanceType: t2.micro # Free tier eligible
+      KeyName: !Ref paramEC2KeyPair
+      SecurityGroups:
+        - !Ref mySecurityGroup
+      IamInstanceProfile: !Ref myInstanceProfile
+      UserData:
+        # After stack is built, SSH and test instance by running the following cmd: 
+        # curl http://169.254.169.254/latest/user-data
+        # sudo service codedeploy-agent status
+        # if not working, use this: https://aws.amazon.com/premiumsupport/knowledge-center/codedeploy-agent-launch-configuration/ 
+        Fn::Base64: |  
+          #!/bin/bash
+          sudo yum -y update
+          sudo yum install -y ruby
+          sudo yum install -y wget
+          cd /home/ec2-user
+          wget https://aws-codedeploy-us-east-1.s3.amazonaws.com/latest/install
+          chmod +x ./install
+          sudo ./install auto
+          sudo service codedeploy-agent start
+      Tags:
+        - Key: Name
+          Value: CICD-dev
+
+  myProdInstance: # instance for Prod
+    Type: 'AWS::EC2::Instance'
+    Properties:
+      ImageId: ami-05880939912ddc43d # Amazon Linux 2 with .Net Core, PowerShell, Mono, and MATE Desktop Environment - Free tier eligible
+      InstanceType: t2.micro # Free tier eligible
+      KeyName: !Ref paramEC2KeyPair
+      SecurityGroups:
+        - !Ref mySecurityGroup
+      IamInstanceProfile: !Ref myInstanceProfile
+      UserData:
+        # After stack is built, SSH and test instance by running the following cmd: 
+        # curl http://169.254.169.254/latest/user-data
+        # sudo service codedeploy-agent status
+        # if not working, use this: https://aws.amazon.com/premiumsupport/knowledge-center/codedeploy-agent-launch-configuration/ 
+        Fn::Base64: |  
+          #!/bin/bash
+          sudo yum -y update
+          sudo yum install -y ruby
+          sudo yum install -y wget
+          cd /home/ec2-user
+          wget https://aws-codedeploy-us-east-1.s3.amazonaws.com/latest/install
+          chmod +x ./install
+          sudo ./install auto
+          sudo service codedeploy-agent start
+      Tags:
+        - Key: Name
+          Value: CICD-prod
+
+  mySecurityGroup: # SG for SSH and HTTP
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: My SG with port 22 and 8080 inbound
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: '22'
+          ToPort: '22'
+          CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: '8080'
+          ToPort: '8080'
+          CidrIp: 0.0.0.0/0
+
+  myCICDInstanceProfileRole: #  role for InstanceProfile
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action: 'sts:AssumeRole'
+      Path: /
+      Policies: # allow read-only access to all S3 buckets and objects
+        - PolicyName: myCICDInstanceProfilePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - 's3:Get*'
+                  - 's3:List*'
+                  - 'codedeploy:*'
+                Effect: Allow
+                Resource: '*'
+
+  myInstanceProfile: # assing role to InstanceProfile
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: /
+      Roles:
+        - !Ref myCICDInstanceProfileRole
+
+
+## =================== OUTPUTS =================== ##
+Outputs:
+  outputDevAppURL:
+    Description: Staging Application Access URL
+    Value: !Sub 'http://${myDevInstance.PublicDnsName}:8080/${paramAppName}'
+  outputProdAppURL:
+    Description: Prod Application Access URL
+    Value: !Sub 'http://${myProdInstance.PublicDnsName}:8080/${paramAppName}'
