@@ -18,10 +18,6 @@ Parameters:
   paramEC2KeyPair:
     Description: Specify an EC2 KeyPair to enable SSH access to the instance
     Type: AWS::EC2::KeyPair::KeyName
-  paramAppName:
-    Type: String
-    Description: Specify an application Name
-    Default: CICD-DotnetCore-WebApp
 
 ## =================== RESOURCES =================== ##
 Resources:
@@ -85,15 +81,15 @@ Resources:
   mySecurityGroup: # SG for SSH and HTTP
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
-      GroupDescription: My SG with port 22 and 8080 inbound
+      GroupDescription: My SG with port 22 and 80 inbound
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: '22'
           ToPort: '22'
           CidrIp: 0.0.0.0/0
         - IpProtocol: tcp
-          FromPort: '8080'
-          ToPort: '8080'
+          FromPort: '80'
+          ToPort: '80'
           CidrIp: 0.0.0.0/0
 
   myCICDInstanceProfileRole: #  role for InstanceProfile
@@ -132,7 +128,7 @@ Resources:
 Outputs:
   outputDevAppURL:
     Description: Staging Application Access URL
-    Value: !Sub 'http://${myDevInstance.PublicDnsName}:8080/${paramAppName}'
+    Value: !Sub 'http://${myDevInstance.PublicDnsName}'
   outputProdAppURL:
     Description: Prod Application Access URL
-    Value: !Sub 'http://${myProdInstance.PublicDnsName}:8080/${paramAppName}'
+    Value: !Sub 'http://${myProdInstance.PublicDnsName}'
