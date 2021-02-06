@@ -1,0 +1,26 @@
+#Based on https://github.com/PrakashTrove/AWS-CodeBuild-NetCore/blob/master/buildspec.yml
+version: 0.2
+phases:
+  install:
+    commands:
+      - echo Nothing to do in the install phase...
+  pre_build:
+    commands:
+      - echo Restore started on `date`
+      - dotnet restore cicd-dotnet-webapp.csproj
+  build:
+    commands:
+      - echo Build started on `date`
+      - dotnet publish -c release -o ./cicd-dotnet-webapp cicd-dotnet-webapp.csproj
+  post_build:
+    commands:
+      - echo Build completed on `date`
+artifacts:
+  files:
+    - ./**/* # get all files and folders and build them all
+    # - 'appspec.yml'
+    # # - codedeploy-scripts/**/*
+    # - codedeploy-scripts/before-install.sh
+    # - codedeploy-scripts/after-install.sh
+    # - codedeploy-scripts/application-start.sh
+    # - codedeploy-scripts/application-stop.sh

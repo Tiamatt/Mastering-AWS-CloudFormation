@@ -1,0 +1,22 @@
+version: 0.0
+os: linux
+files:
+  - source: /cicd-dotnet-webapp
+    destination: /home/ec2-user/cicd-dotnet-webapp #  /var/www/html/DotNetWebApp
+hooks:
+  BeforeInstall:
+  # - location: codedeploy-scripts/before-install.sh
+  #   timeout: 300
+  #   runas: root
+  AfterInstall:
+  #  - location: codedeploy-scripts/after-install.sh
+  #    timeout: 300
+  #    runas: root
+  ApplicationStart:
+    - location: codedeploy-scripts/application-start.sh
+      timeout: 300
+      runas: root
+  ApplicationStop:
+  #   - location: codedeploy-scripts/application-stop.sh
+  #    timeout: 300
+  #    runas: root
