@@ -16,6 +16,10 @@ Parameters:
     Type: String
     Description: Specify an application Name
     Default: cicd-dotnet-webapp
+  paramInstanceTagValue:
+    Type: String
+    Description: Specify the value of instance tag that you want to deploy
+    Default: CICD-dev 
 
 ## =================== RESOURCES =================== ##
 Resources:
@@ -33,7 +37,7 @@ Resources:
       ApplicationName: !Ref myCodeDeployApplication
       Ec2TagFilters: 
         - Key: Name
-          Value: CICD-prod # get all EC2 instances with {Name: CICD-prod} tag
+          Value: !Ref paramInstanceTagValue # get all EC2 instances with {Name: my-tag-value} tag
           Type: 'KEY_AND_VALUE'
       ServiceRoleArn: !GetAtt myCodeDeployRole.Arn
       Deployment: 
