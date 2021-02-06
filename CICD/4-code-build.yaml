@@ -19,6 +19,10 @@ Parameters:
     Type: String
     Description: S3 bucket name to store CodeBuild artifacts
     Default: bucket-for-code-build-artifacts
+  paramAppName:
+    Type: String
+    Description: Specify an application Name
+    Default: cicd-dotnet-webapp
 
 ## =================== RESOURCES =================== ##
 Resources:
@@ -31,8 +35,9 @@ Resources:
       ServiceRole: !GetAtt myCodeBuildRole.Arn
       Artifacts:
         Type: S3
-        Name: Artifacts
+        Name: !Ref paramAppName
         Location: !Ref paramArtifactStoreS3Location
+        Packaging: ZIP # need to ZIP for CodeDeploy
       Environment:
         Type: LINUX_CONTAINER
         ComputeType: BUILD_GENERAL1_SMALL
