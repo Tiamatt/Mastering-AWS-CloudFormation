@@ -1,0 +1,78 @@
+## =================== VERSION =================== ##
+AWSTemplateFormatVersion: '2010-09-09'
+
+## =================== DESCRIPTION =================== ##
+Description: >-
+  AWS CloudFormation sample template
+  Create CodeDeploy stack that gets build code from S3 bucket and deploys it to EC2 instances
+
+## =================== PARAMETERS =================== ##
+Parameters:  
+  paramArtifactStoreS3Location:
+    Type: String
+    Description: S3 bucket name to store CodeBuild artifacts
+    Default: bucket-for-code-build-artifacts
+  paramAppName:
+    Type: String
+    Description: Specify an application Name
+    Default: cicd-dotnet-webapp
+
+## =================== RESOURCES =================== ##
+Resources:
+
+  myCodeDeployApplication:
+    Type: 'AWS::CodeDeploy::Application'
+    Properties: 
+      ApplicationName: myCodeDeployApplicationName
+      ComputePlatform: Server # Allowed values: ECS | Lambda | Server
+
+  myCodeDeployDeploymentGroup: 
+    Type: 'AWS::CodeDeploy::DeploymentGroup'
+    Properties: 
+      DeploymentGroupName: myCodeDeployDeploymentGroupName
+      ApplicationName: !Ref myCodeDeployApplication
+      Ec2TagFilters: 
+        - Key: Name
+          Value: CICD-prod # get all EC2 instances with {Name: CICD-prod} tag
+          Type: 'KEY_AND_VALUE'
+      ServiceRoleArn: !GetAtt myCodeDeployRole.Arn
+      Deployment: 
+        Description: !Sub My CodeDeploy deployment for ${AWS::StackName}
+        IgnoreApplicationStopFailures: true
+        Revision: # info about the location of stored app artifacts
+          RevisionType: S3
+          S3Location: 
+            Bucket: !Ref paramArtifactStoreS3Location
+            Key: !Ref paramAppName
+            BundleType: Zip
+
+  myCodeDeployRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: myCodeDeployRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - codedeploy.amazonaws.com
+      Path: /
+      Policies:
+        - PolicyName: myCodeDeployPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - 'ec2:DescribeInstances'
+                  - 'ec2:DescribeInstanceStatus'
+                  - 'ec2:TerminateInstances'
+                  - 'tag:GetTags'
+                  - 'tag:GetResources'
+                  - 'sns:Publish'
+                  - 'cloudwatch:DescribeAlarms'
+                  - 'cloudwatch:PutMetricAlarm'
+                Effect: Allow
+                Resource: '*'
