@@ -18,5 +18,5 @@ Resources:
 ## =================== OUTPUTS =================== ##
 Outputs:
   outputsS3Bucket:
-      Value: !Join ['', ['https://', !GetAtt [myS3Bucket, DomainName]]]
+      Value: !Join ['', ['https://', !GetAtt myS3Bucket.DomainName]]
       Description: Domain Name of the Amazon S3 bucket   
