@@ -80,3 +80,12 @@ Resources:
                   - 'cloudwatch:PutMetricAlarm'
                 Effect: Allow
                 Resource: '*'
+
+## =================== OUTPUT =================== ##
+Outputs:
+  outputApplicationName:
+    Description: CodeDeploy Application Name
+    Value: !Ref myCodeDeployApplication
+  outputDeploymentGroupName:
+    Description: CodeDeploy DeploymentGroup Name
+    Value: !Ref myCodeDeployDeploymentGroup
