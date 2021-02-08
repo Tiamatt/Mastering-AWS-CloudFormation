@@ -89,4 +89,8 @@ Resources:
                   - !Sub arn:aws:s3:::${paramArtifactStoreS3Location}/*
                   - !Sub arn:aws:s3:::${paramArtifactStoreS3Location}
 
-## =================== OUTPUT =================== ##      
+## =================== OUTPUT =================== ##
+Outputs:
+  outputArn:
+    Description: CodeBuilds ARN
+    Value: !GetAtt myCodeBuildProject.Arn
