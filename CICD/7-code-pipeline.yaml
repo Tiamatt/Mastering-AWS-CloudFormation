@@ -1,0 +1,169 @@
+## =================== VERSION =================== ##
+AWSTemplateFormatVersion: '2010-09-09'
+
+## =================== DESCRIPTION =================== ##
+Description: >-
+  AWS CloudFormation sample template
+  Create a CodePipeline with the foloowing stages:
+  1. StageOne-SourceCode
+  2. StageTwo-Build
+  3. StageThree-Deploy-to-Dev
+
+
+## =================== PARAMETERS =================== ##
+Parameters:  
+  paramRepoName:
+    Description: Repository name
+    Type: String
+    Default: CICDRepo
+  paramArtifactStoreS3Location:
+    Type: String
+    Description: S3 bucket name where CodeBuild artifacts are stored
+    Default: bucket-for-code-build-artifacts
+  paramAppName:
+    Type: String
+    Description: Specify an application Name
+    Default: cicd-dotnet-webapp
+  paramCodeBuildName:
+    Type: String
+    Description: CodeBuild name
+    Default: myCodeBuildProjectName
+  paramCodeDeployApplicationName:
+    Type: String
+    Description: CodeBuild name
+    Default: myCodeDeployApplicationName
+  paramCodeDeployDeploymentGroupName:
+    Type: String
+    Description: CodeBuild name
+    Default: myCodeDeployDeploymentGroupName
+
+## =================== RESOURCES =================== ##
+Resources:
+
+  myCodePipeline:
+    Type: 'AWS::CodePipeline::Pipeline'
+    Properties:
+      Name:  myCodePipelineName
+      RoleArn: !GetAtt myCodePipelineRole.Arn
+      ArtifactStore:
+        Type: S3
+        Location: !Ref paramArtifactStoreS3Location
+      Stages:
+        # Stage 1 - CodeCommit
+        - Name: StageOne-SourceCode
+          Actions:
+            - Name: StageOne-CodeCommit
+              RunOrder: 1
+              ActionTypeId:
+                Category: Source
+                Owner: AWS
+                Version: 1
+                Provider: CodeCommit
+              Configuration:
+                BranchName: master
+                RepositoryName: !Ref paramRepoName
+              OutputArtifacts:
+                - Name: StageOne-CodeCommit-OutputArtifacts
+        # Stage 2 - CodeBuild
+        - Name: StageTwo-Build
+          Actions:
+            - Name: StageTwo-CodeBuild
+              RunOrder: 2
+              ActionTypeId:
+                Category: Build
+                Owner: AWS
+                Version: 1
+                Provider: CodeBuild
+              Configuration:
+                ProjectName: !Ref paramCodeBuildName
+              InputArtifacts:
+                - Name: StageOne-CodeCommit-OutputArtifacts
+              OutputArtifacts:
+                - Name: StageTwo-CodeBuild-OutputArtifacts
+        # Stage 3 - CodeDeploy to Dev env
+        - Name: StageThree-Deploy-to-Dev
+          Actions:
+            - Name: StageThree-CodeDeploy-Dev
+              RunOrder: 3
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: CodeDeploy
+              Configuration:
+                ApplicationName: !Ref paramCodeDeployApplicationName
+                DeploymentGroupName: !Ref paramCodeDeployDeploymentGroupName 
+              InputArtifacts:
+                - Name: StageTwo-CodeBuild-OutputArtifacts
+  
+  myCodePipelineRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      RoleName: !Sub myCodePipelineRole
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - codepipeline.amazonaws.com
+      Path: /
+      Policies:
+        - PolicyName: myCodePipelinePolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              # Permissions to access codebuild artifact object in S3 bucket
+              - Action:
+                  - 's3:DeleteObject'
+                  - 's3:GetObject'
+                  - 's3:GetObjectVersion'
+                  - 's3:ListBucket'
+                  - 's3:PutObject'
+                  - 's3:GetBucketPolicy'
+                Effect: Allow
+                Resource: 
+                  - !Sub arn:aws:s3:::${paramArtifactStoreS3Location}
+                  - !Sub arn:aws:s3:::${paramArtifactStoreS3Location}/*
+              # Permissions to publish to SNS 
+              - Action:
+                  - 'sns:Publish'
+                Effect: Allow
+                Resource: '*'
+              # Permissions to access target CodeCommit
+              - Action:
+                  - 'codecommit:ListBranches'
+                  - 'codecommit:ListRepositories'
+                  - 'codecommit:BatchGetRepositories'
+                  - 'codecommit:Get*'
+                  - 'codecommit:GitPull'
+                  - 'codecommit:UploadArchive'
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${paramRepoName}
+              # Permissions to access target CodeBuild
+              - Action:
+                  - 'codebuild:StartBuild'
+                  - 'codebuild:BatchGetBuilds'
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${paramCodeBuildName}
+                  - !Sub arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:build/${paramCodeBuildName}:*
+              # Permissions to access CodeDeploy
+              - Action:
+                  - 'codedeploy:CreateDeployment'
+                  - 'codedeploy:GetApplicationRevision'
+                  - 'codedeploy:GetDeployment'
+                  - 'codedeploy:GetDeploymentConfig'
+                  - 'codedeploy:RegisterApplicationRevision'
+                Effect: Allow
+                Resource: '*'
+
+  # myCodePipelineSNSTopic:
+  #   Type: AWS::SNS::Topic
+  #   Properties:
+  #     Subscription:
+  #       - Endpoint: !Ref Email
+  #         Protocol: email
