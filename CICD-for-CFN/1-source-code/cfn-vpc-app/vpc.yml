@@ -1,0 +1,99 @@
+AWSTemplateFormatVersion: 2010-09-09
+ 
+## =================== DESCRIPTION =================== ##
+Description: >-
+  AWS CloudFormation sample template.
+  Create a custom VPC with a public subnet
+
+## =================== PARAMETERS =================== ##
+Parameters:
+  paramVpcCIDR:
+    Description: Enter the IP range (CIDR notation) for VPC
+    Type: String
+  paramPublicSubnet1CIDR:
+    Description: Enter the IP range (CIDR notation)  for the public subnet in AZ 1
+    Type: String
+  # paramPublicSubnet2CIDR:
+  #   Description: Enter the IP range (CIDR notation)  for the public subnet in AZ 2
+  #   Type: String  
+
+## =================== RESOURCES ===================
+Resources:
+
+  myVPC: # Create a VPC
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref paramVpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-myVPC'
+
+  myInternetGateway: # Create a Internet Gateway
+    Type: AWS::EC2::InternetGateway
+
+  myVPCGatewayAttachment: # Attach the Internet Gateway to the VPC
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref myVPC
+      InternetGatewayId: !Ref myInternetGateway
+
+  myPublicRouteTable: # Create a public route table for the VPC (will be public once it is associated with the Internet Gateway)
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myVPC
+
+  myPublicRoute: # Associate the public route table with the Internet Gateway
+    Type: AWS::EC2::Route
+    DependsOn: myVPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref myPublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref myInternetGateway
+
+  myPublicSubnet1: # Create a public subnet in AZ 1 (will be public once it is associated with public route table)
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ] # AZ 1
+      CidrBlock: !Ref paramPublicSubnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub '${AWS::StackName}-myPublicSubnet1'
+
+  # myPublicSubnet2: # Create a public subnet in AZ 2 (will be public once it is associated with public route table)
+  #   Type: AWS::EC2::Subnet
+  #   Properties:
+  #     VpcId: !Ref myVPC
+  #     AvailabilityZone: !Select [ 1, !GetAZs '' ] # AZ 2
+  #     CidrBlock: !Ref paramPublicSubnet2CIDR
+  #     MapPublicIpOnLaunch: true
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub '${AWS::StackName}-myPublicSubnet2'
+
+  myPublicSubnet1RouteTableAssociation: # Associate the public route table with the public subnet in AZ 1
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref myPublicRouteTable
+      SubnetId: !Ref myPublicSubnet1
+
+  # myPublicSubnet2RouteTableAssociation: # Associate the public route table with the public subnet in AZ 1
+  #   Type: AWS::EC2::SubnetRouteTableAssociation
+  #   Properties:
+  #     RouteTableId: !Ref myPublicRouteTable
+  #     SubnetId: !Ref myPublicSubnet2
+
+## =================== OUTPUTS =================== ##
+Outputs:
+  outputVpcId:
+    Description: VPC ID
+    Value: !Ref myVPC
+  outputPublicSubnet1Id:
+    Description: Public subnet1 ID
+    Value: !Ref myPublicSubnet1
+  # outputPublicSubnet2Id:
+  #   Description: Public subnet2 ID
+  #   Value: !Ref myPublicSubnet2

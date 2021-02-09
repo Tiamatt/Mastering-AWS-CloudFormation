@@ -1,0 +1,6 @@
+{
+  "Parameters" : {
+    "paramVpcCIDR" : "10.192.0.0/16",
+    "paramPublicSubnet1CIDR" : "10.192.10.0/24"
+  }
+}
