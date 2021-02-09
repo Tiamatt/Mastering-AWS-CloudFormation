@@ -1,0 +1,128 @@
+## =================== VERSION =================== ##
+AWSTemplateFormatVersion: '2010-09-09'
+
+## =================== DESCRIPTION =================== ##
+Description: >-
+  AWS CloudFormation sample template
+  1. Create an S3 bucket for storing CodeBuild artifacts
+  2. Create CodeBuild project that gets source code from CodeCommit repo and stores the built artifacts in S3 bucket
+  3. Create a new role for CodeBuild to access CloudFormation, CodeCommit, S3, CloudWatch logs, etc
+
+## =================== PARAMETERS =================== ##
+Parameters:
+  paramCodeCommitRepoName:
+    Type: String
+    Description: Repository name that contains initial source code
+    Default: cfn-repo
+
+## =================== RESOURCES =================== ##
+Resources:
+
+  # Create an S3 bucket for storing CodeBuild artifacts
+  myS3BucketForCodeBuildArtifacts:
+    Type: AWS::S3::Bucket
+    Properties:
+      AccessControl: PublicRead
+      BucketName: !Sub artifacts-s3bucket-for-${paramCodeCommitRepoName}
+      VersioningConfiguration:
+        Status: Enabled
+
+  # Create CodeBuild project that gets source code from CodeCommit repo and stores the built artifacts in S3 bucket
+  myCodeBuildProject: 
+    Type: AWS::CodeBuild::Project
+    Properties:
+      Name: !Sub my-codebuild-project-${AWS::StackName}
+      Description: CodeBuild for CFN-WPC-APP project
+      ServiceRole: !GetAtt myCodeBuildRole.Arn
+      Source: # get source code from CodeCommit repo
+        Location: !Sub 'https://git-codecommit.${AWS::AccountId}.amazonaws.com/v1/repos/${paramCodeCommitRepoName}'
+        Type: CODECOMMIT
+      Artifacts:
+        Type: S3
+        Name: !Sub codebuild-artifacts-${AWS::StackName}
+        Location: !Ref myS3BucketForCodeBuildArtifacts
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0 # original is 2.0
+        EnvironmentVariables:
+          - Name: TEMPLATE_BUCKET
+            Value: !Ref myS3BucketForCodeBuildArtifacts
+          - Name: TEMPLATE_PREFIX
+            Value: codebuild
+      TimeoutInMinutes: 15
+      Tags:
+        - Key: Name
+          Value: !Sub my-codebuild-project-${AWS::StackName}
+
+  # Create a new role for CodeBuild to access CloudFormation, CodeCommit, S3, CloudWatch logs, etc
+  myCodeBuildRole: 
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub my-codebuild-role-${AWS::StackName}
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Action:
+              - 'sts:AssumeRole'
+            Effect: Allow
+            Principal:
+              Service:
+                - codebuild.amazonaws.com
+      Path: /
+      Policies:
+        - PolicyName: CodeBuildAccessPolicy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: 'Allow'
+                Action:
+                  - 'cloudformation:Get*'
+                  - 'cloudformation:Describe*'
+                  - 'cloudformation:List*'
+                Resource: '*'
+              - Effect: 'Allow'
+                Action:
+                  - 'codecommit:ListBranches'
+                  - 'codecommit:ListRepositories'
+                  - 'codecommit:BatchGetRepositories'
+                  - 'codecommit:Get*'
+                  - 'codecommit:GitPull'
+                Resource:
+                  - Fn::Sub: arn:aws:codecommit:${AWS::Region}:${AWS::AccountId}:${paramCodeCommitRepoName}
+              - Effect: 'Allow'
+                Action:
+                  - 'ec2:Describe*'
+                  - 'cloudformation:ValidateTemplate'
+                  - 'elasticloadbalancing:Describe*'
+                  - 'autoscaling:Describe*'
+                  - 'iam:Get*'
+                  - 'iam:List*'
+                  - 'logs:Describe*'
+                  - 'logs:Get*'
+                  - 'tag:Get*'
+                Resource:
+                  - '*'
+              - Effect: 'Allow'
+                Action:
+                  - 'logs:CreateLogGroup'
+                  - 'logs:CreateLogStream'
+                  - 'logs:PutLogEvents'
+                Resource:
+                  - Fn::Sub: arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/codebuild/*
+              - Effect: 'Allow'
+                Action:
+                  - 's3:PutObject'
+                  - 's3:GetObject'
+                  - 's3:GetObjectVersion'
+                  - 's3:ListBucket'
+                Resource:
+                  - Fn::Sub: arn:aws:s3:::codepipeline-${AWS::Region}-*
+                  - Fn::Sub: arn:aws:s3:::${myS3BucketForCodeBuildArtifacts}/*
+                  - Fn::Sub: arn:aws:s3:::${myS3BucketForCodeBuildArtifacts}
+
+## =================== OUTPUT =================== ##
+Outputs:
+  outputArn:
+    Description: CodeBuilds ARN
+    Value: !GetAtt myCodeBuildProject.Arn
