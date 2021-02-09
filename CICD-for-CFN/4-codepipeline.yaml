@@ -5,6 +5,7 @@ AWSTemplateFormatVersion: '2010-09-09'
 Description: >-
   AWS CloudFormation sample template
   - Create a new CodePipeline
+  - Create an SNS topic for deployment approval
   - Create a new role for CodePipeline to access S3, CodeCommit, CloudFormation, CodeBuild, etc
   - Create a new role for CloudFormation to access S3 and EC2
 
@@ -21,6 +22,9 @@ Parameters:
   paramCodeBuildProjectName:
     Type: String
     Description: CodeBuild project name that builds the target project
+  paramEmail:
+    Description: Your email for CodePipeline notifications
+    Type: String
 
 ## =================== RESOURCES =================== ##
 Resources:
@@ -36,10 +40,11 @@ Resources:
         Type: S3
         Location: !Ref paramS3BucketForCodeBuildArtifacts
       Stages:
-        # Stage 1 - CodeCommit
+        # Stage 1
         - Name: StageOne-SourceCode
           Actions:
-            - Name: StageOne-CodeCommit
+            # Action 1/1 - Set CodeCommit
+            - Name: set-codecommit
               RunOrder: 1
               ActionTypeId:
                 Category: Source
@@ -50,11 +55,12 @@ Resources:
                 BranchName: master
                 RepositoryName: !Ref paramCodeCommitRepoName
               OutputArtifacts:
-                - Name: StageOne-CodeCommit-OutputArtifacts
-        # Stage 2 - CodeBuild
+                - Name: stageone-codecommit-output
+        # Stage 2
         - Name: StageTwo-Build
           Actions:
-            - Name: StageTwo-CodeBuild
+            # Action 1/1 - Set CodeBuild
+            - Name: set-codebuild
               RunOrder: 1
               ActionTypeId:
                 Category: Build
@@ -64,13 +70,14 @@ Resources:
               Configuration:
                 ProjectName: !Ref paramCodeBuildProjectName
               InputArtifacts:
-                - Name: StageOne-CodeCommit-OutputArtifacts
+                - Name: stageone-codecommit-output
               OutputArtifacts:
-                - Name: StageTwo-CodeBuild-OutputArtifacts
-        # Stage 3 - CodeDeploy to Dev env
+                - Name: stagetwo-codebuild-output
+        # Stage 3
         - Name: StageThree-Create-CFNStack-for-Dev
           Actions:
-            - Name: StageThree-CodeDeploy-to-CFN-for-Dev
+            # Action 1/1 - Create CloudFormation stack for DEV env
+            - Name: run-cfnstack-for-dev
               RunOrder: 1
               ActionTypeId:
                 Category: Deploy
@@ -81,13 +88,71 @@ Resources:
                 ActionMode: CREATE_UPDATE #create and update CFN stack
                 RoleArn: !GetAtt myCloudFormationRole.Arn
                 Capabilities: CAPABILITY_NAMED_IAM
-                StackName: !Sub via-codepipeline-${AWS::StackName}
-                TemplateConfiguration: StageTwo-CodeBuild-OutputArtifacts::vpc-config.json                
-                TemplatePath: StageTwo-CodeBuild-OutputArtifacts::vpc.yml 
+                StackName: my-vpc-stack-via-codepipeline-for-dev
+                TemplateConfiguration: stagetwo-codebuild-output::vpc-config.json
+                TemplatePath: stagetwo-codebuild-output::vpc.yml 
               InputArtifacts:
-                - Name: StageTwo-CodeBuild-OutputArtifacts
+                - Name: stagetwo-codebuild-output
               OutputArtifacts:
-                - Name: StageThree-CodeDeploy-to-CFN-for-Dev-OutputArtifacts    
+                - Name: stagethree-cfnstack-for-dev-output
+        # Stage 4
+        - Name: StageFour-Create-CFNStack-for-Prod
+          Actions:
+            # Action 1/3 -Create a changeset of CloudFormation stack for PROD env
+            - Name: create-cfnstack-changeset-for-prod
+              RunOrder: 1
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: CloudFormation
+              Configuration:
+                ActionMode: CHANGE_SET_REPLACE # create a changeset of vpc.yml template once it's changed and pushed into CodeCommit
+                ChangeSetName: my-changeset-for-prod
+                RoleArn: !GetAtt myCloudFormationRole.Arn
+                Capabilities: CAPABILITY_NAMED_IAM
+                StackName: my-vpc-stack-via-codepipeline-for-prod
+                TemplateConfiguration: stagetwo-codebuild-output::vpc-config.json
+                TemplatePath: stagetwo-codebuild-output::vpc.yml 
+              InputArtifacts:
+                - Name: stagetwo-codebuild-output
+              OutputArtifacts:
+                - Name: stagefour-cfnstack-changeset-for-prod-output
+            # Action 2/3 - Approve a changeset  for PROD env via SNS notification to emai
+            - Name: set-approval-for-prod
+              RunOrder: 2
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Version: 1
+                Provider: Manual
+              Configuration:
+                NotificationArn: !Ref myCodePipelineSNSTopic
+                CustomData: Hey you, approve prod deployment
+             # Action 3/3 - Create CloudFormation stack for PROD env
+            - Name: run-cfnstack-for-prod
+              RunOrder: 3
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: CloudFormation
+              Configuration:
+                ActionMode: CHANGE_SET_EXECUTE
+                ChangeSetName: my-changeset-for-prod
+                StackName: my-vpc-stack-via-codepipeline-for-prod
+              InputArtifacts:
+                - Name: stagefour-cfnstack-changeset-for-prod-output
+              OutputArtifacts:
+                - Name: stagefour-cfnstack-for-prod-output
+
+  # Create an SNS topic for deployment approval
+  myCodePipelineSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+        - Endpoint: !Ref paramEmail
+          Protocol: email   
 
   # Create a new role for CodePipeline to access S3, CodeCommit, CloudFormation, CodeBuild, etc
   myCodePipelineRole:
