@@ -1,0 +1,47 @@
+## =================== VERSION =================== ##
+AWSTemplateFormatVersion: '2010-09-09'
+
+## =================== DESCRIPTION =================== ##
+Description: >-
+  AWS CloudFormation sample template
+  Create an empty repository in AWS CodeCommit
+
+## =================== PARAMETERS =================== ##
+Parameters:
+  paramRepoName:
+    Description: Repository name (must be unique across the calling AWS account)
+    Type: String
+    MinLength: 1
+    MaxLength: 100
+    AllowedPattern: '^[\w\.-]+$'
+    ConstraintDescription: Repository name is limited to 100 alphanumeric, underscore, dash, and dot
+    Default: cfn-repo
+  paramRepoDescription:
+    Description: Repository description
+    Type: String
+    MaxLength: 1000
+    Default: This repository is for cfn-vpc-app (to store Cloudformation templates and apply in CI/CD)
+    ConstraintDescription: Repository desciption is limited to 1000 alphanumeric, underscore, dash, and dot
+
+## =================== RESOURCES =================== ##
+Resources:
+  myRepo: # a new repository
+    Type: 'AWS::CodeCommit::Repository'
+    Properties:
+      RepositoryName: !Ref paramRepoName # (required)
+      RepositoryDescription: !Ref paramRepoDescription
+
+## =================== OUTPUT =================== ##
+Outputs:
+  outputName:
+    Description: Repository's name
+    Value: !GetAtt myRepo.Name
+  outputArn:
+    Description: Repository's ARN
+    Value: !GetAtt myRepo.Arn
+  outputCloneUrlHttp:
+    Description: Repository's URL to use for cloning the repository over HTTPS
+    Value: !GetAtt myRepo.CloneUrlHttp
+  outputCloneUrlSsh:
+    Description: Repository's URL to use for cloning the repository over SSH
+    Value: !GetAtt myRepo.CloneUrlSsh
