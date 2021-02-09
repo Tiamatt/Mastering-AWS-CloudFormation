@@ -123,6 +123,9 @@ Resources:
 
 ## =================== OUTPUT =================== ##
 Outputs:
-  outputArn:
-    Description: CodeBuilds ARN
+  outputCodeBuildProjectName:
+    Description: CodeBuild project name
+    Value: !Ref myCodeBuildProject
+  outputCodeBuildProjectArn:
+    Description:  CodeBuild project ARN
     Value: !GetAtt myCodeBuildProject.Arn
