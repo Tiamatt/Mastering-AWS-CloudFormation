@@ -4,11 +4,17 @@ AWSTemplateFormatVersion: '2010-09-09'
 ## =================== DESCRIPTION =================== ##
 Description: >-
   AWS CloudFormation sample template
-  Create a CodePipeline with the foloowing stages:
-  1. StageOne-SourceCode
-  2. StageTwo-Build
-  3. StageThree-Deploy-to-Dev
-
+  a) Create a new CodeBuild project but don't ZIP it
+  b) Create a new CodeDeploy DeploymentGroups for Dev env but don't specofy 'Deployment' attribute
+  c) Create a new CodeDeploy DeploymentGroups for Prod env but don't specofy 'Deployment' attribute
+  d) Create a new CodePipeline with the following stages:
+    1. StageOne-SourceCode
+    2. StageTwo-Build
+    3. StageThree-Deploy-to-Dev
+    4. StageFour-Approve-Deployment-To-Prod
+    5. StageThree-Deploy-to-Prod
+  e) Create a new role for CodePipeline
+  f) Create an SNS topic for deployment approval
 
 ## =================== PARAMETERS =================== ##
 Parameters:  
@@ -24,27 +30,69 @@ Parameters:
     Type: String
     Description: Specify an application Name
     Default: cicd-dotnet-webapp
-  paramCodeBuildName:
-    Type: String
-    Description: CodeBuild name
-    Default: myCodeBuildProjectName
   paramCodeDeployApplicationName:
     Type: String
     Description: CodeBuild name
     Default: myCodeDeployApplicationName
-  paramCodeDeployDeploymentGroupName:
+  paramEmail:
+    Description: Your email for CodePipeline notifications
     Type: String
-    Description: CodeBuild name
-    Default: myCodeDeployDeploymentGroupName
 
 ## =================== RESOURCES =================== ##
 Resources:
 
+  # Create a new CodeBuild project but don't ZIP it!
+  myCodeBuildProject: # 
+    Type: 'AWS::CodeBuild::Project'
+    Properties:
+      Name: myCodeBuildProjectForCodePipeline
+      Description: CodeBuild for .NET Core WebApi project
+      ServiceRole: !Sub 'arn:aws:iam::${AWS::AccountId}:role/myCodeBuildRoleName' # created in 4-code-build.yaml
+      Artifacts:
+        Type: S3
+        Name: !Ref paramAppName
+        Location: !Ref paramArtifactStoreS3Location
+        # Packaging: ZIP # need to ZIP for CodeDeploy
+      Environment:
+        Type: LINUX_CONTAINER
+        ComputeType: BUILD_GENERAL1_SMALL
+        Image: aws/codebuild/standard:4.0
+      Source: # get source code from CodeCommit repo
+        Location: !Sub 'https://git-codecommit.${AWS::AccountId}.amazonaws.com/v1/repos/${paramRepoName}'
+        Type: CODECOMMIT
+      TimeoutInMinutes: 15
+
+  # Create a new CodeDeploy DeploymentGroups for Dev env but don't specofy 'Deployment' attribute
+  myCodeDeployDeploymentGroupForDev: 
+    Type: 'AWS::CodeDeploy::DeploymentGroup'
+    Properties: 
+      DeploymentGroupName: myCodeDeployDeploymentGroupForDevName
+      ApplicationName: !Ref paramCodeDeployApplicationName # created in 6-code-deploy.yaml
+      Ec2TagFilters: 
+        - Key: Name
+          Value: CICD-dev  # get all EC2 instances with { Name: CICD-dev } tag
+          Type: 'KEY_AND_VALUE'
+      ServiceRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/myCodeDeployRole
+
+  # Create a new CodeDeploy DeploymentGroups for Prod env but don't specofy 'Deployment' attribute
+  myCodeDeployDeploymentGroupForProd: 
+    Type: 'AWS::CodeDeploy::DeploymentGroup'
+    Properties: 
+      DeploymentGroupName: myCodeDeployDeploymentGroupForProdName
+      ApplicationName: !Ref paramCodeDeployApplicationName # created in 6-code-deploy.yaml
+      Ec2TagFilters: 
+        - Key: Name
+          Value: CICD-prod  # get all EC2 instances with { Name: CICD-prod } tag
+          Type: 'KEY_AND_VALUE'
+      ServiceRoleArn: !Sub arn:aws:iam::${AWS::AccountId}:role/myCodeDeployRole
+
+  # Create a new CodePipeline
   myCodePipeline:
     Type: 'AWS::CodePipeline::Pipeline'
     Properties:
       Name:  myCodePipelineName
       RoleArn: !GetAtt myCodePipelineRole.Arn
+      # Provide S3 bucket name that contains codebuild artifacts
       ArtifactStore:
         Type: S3
         Location: !Ref paramArtifactStoreS3Location
@@ -68,14 +116,14 @@ Resources:
         - Name: StageTwo-Build
           Actions:
             - Name: StageTwo-CodeBuild
-              RunOrder: 2
+              RunOrder: 1
               ActionTypeId:
                 Category: Build
                 Owner: AWS
                 Version: 1
                 Provider: CodeBuild
               Configuration:
-                ProjectName: !Ref paramCodeBuildName
+                ProjectName: !Ref myCodeBuildProject
               InputArtifacts:
                 - Name: StageOne-CodeCommit-OutputArtifacts
               OutputArtifacts:
@@ -84,7 +132,7 @@ Resources:
         - Name: StageThree-Deploy-to-Dev
           Actions:
             - Name: StageThree-CodeDeploy-Dev
-              RunOrder: 3
+              RunOrder: 1
               ActionTypeId:
                 Category: Deploy
                 Owner: AWS
@@ -92,10 +140,39 @@ Resources:
                 Provider: CodeDeploy
               Configuration:
                 ApplicationName: !Ref paramCodeDeployApplicationName
-                DeploymentGroupName: !Ref paramCodeDeployDeploymentGroupName 
+                DeploymentGroupName: !Ref myCodeDeployDeploymentGroupForDev 
+              InputArtifacts:
+                - Name: StageTwo-CodeBuild-OutputArtifacts
+        # Stage 4 - Approve deployment to Prod env via SNS notification to email
+        - Name: StageFour-Approve-Deployment-To-Prod
+          Actions:
+            - Name: StageFour-Approval
+              RunOrder: 1
+              ActionTypeId:
+                Category: Approval
+                Owner: AWS
+                Version: 1
+                Provider: Manual
+              Configuration:
+                NotificationArn: !Ref myCodePipelineSNSTopic
+                CustomData: Hey you, approve prod deployment
+        # Stage 5 - CodeDeploy to Prod env
+        - Name: StageFive-Deploy-to-Prod
+          Actions:
+            - Name: StageFive-CodeDeploy-Prod
+              RunOrder: 1
+              ActionTypeId:
+                Category: Deploy
+                Owner: AWS
+                Version: 1
+                Provider: CodeDeploy
+              Configuration:
+                ApplicationName: !Ref paramCodeDeployApplicationName
+                DeploymentGroupName: !Ref myCodeDeployDeploymentGroupForProd 
               InputArtifacts:
                 - Name: StageTwo-CodeBuild-OutputArtifacts
   
+  # Create a new role for CodePipeline
   myCodePipelineRole:
     Type: 'AWS::IAM::Role'
     Properties:
@@ -149,8 +226,8 @@ Resources:
                   - 'codebuild:BatchGetBuilds'
                 Effect: Allow
                 Resource:
-                  - !Sub arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${paramCodeBuildName}
-                  - !Sub arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:build/${paramCodeBuildName}:*
+                  - !Sub arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:project/${myCodeBuildProject}
+                  - !Sub arn:aws:codebuild:${AWS::Region}:${AWS::AccountId}:build/${myCodeBuildProject}:*
               # Permissions to access CodeDeploy
               - Action:
                   - 'codedeploy:CreateDeployment'
@@ -161,9 +238,10 @@ Resources:
                 Effect: Allow
                 Resource: '*'
 
-  # myCodePipelineSNSTopic:
-  #   Type: AWS::SNS::Topic
-  #   Properties:
-  #     Subscription:
-  #       - Endpoint: !Ref Email
-  #         Protocol: email
+  # Create an SNS topic for deployment approval
+  myCodePipelineSNSTopic:
+    Type: 'AWS::SNS::Topic'
+    Properties:
+      Subscription:
+        - Endpoint: !Ref paramEmail
+          Protocol: email
