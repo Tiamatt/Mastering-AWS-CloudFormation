@@ -11,7 +11,8 @@ phases:
   build:
     commands:
       - echo Build started on `date`
-      - dotnet publish -c release -o ./cicd-dotnet-webapp cicd-dotnet-webapp.csproj
+      # - dotnet publish -c release -o ./cicd-dotnet-webapp cicd-dotnet-webapp.csproj
+      # commented because CodeBuild doesn't support .NET 5 yet
   post_build:
     commands:
       - echo Build completed on `date`
