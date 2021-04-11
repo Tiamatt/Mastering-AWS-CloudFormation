@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+## =================== DESCRIPTION =================== #
+Description: >-
+  AWS CloudFormation sample template. 
+  Create an empty ECS cluster with enabled CloudWatch Container Insights 
+  Cluster description: Networking only (cluster only) - Powered by AWS Fargate
+
+## =================== PARAMETERS =================== #
+Parameters:
+  paramClusterName:
+    Description: Specify an empty cluster name
+    Type: String
+    Default: my-empty-cluster-demo
+  paramUniqueName:
+    Description: Specify a unique name
+    Type: String
+    Default: OberynMartell
+
+## =================== RESOURCES =================== #
+Resources:
+
+  # create an empty cluster
+  myCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName:  !Ref paramClusterName
+      ClusterSettings: # enable CloudWatch Container Insights that is tagged with the key 'MasteringECS' and the value <paramUniqueName>
+      - Name: containerInsights
+        Value: enabled
+      Tags:
+      - Key: MasteringECS
+        Value:  !Ref paramUniqueName
+
+## =================== OUTPUTS =================== #
+Outputs:
+  outputClusterName:
+    Description: The name of the ECS cluster
+    Value: !Ref myCluster
