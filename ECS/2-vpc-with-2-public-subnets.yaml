@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: 2010-09-09
+
+## =================== DESCRIPTION =================== #
+Description: >-
+  AWS CloudFormation sample template. 
+  Create a custom VPC with a pair of public subnets spread across two AZs
+
+## =================== PARAMETERS =================== #
+Parameters:
+  paramVpcCIDR:
+    Description: Enter the IP range (CIDR notation) for VPC
+    Type: String
+    Default: 10.192.0.0/16
+  paramPublicSubnet1CIDR:
+    Description: Enter the IP range (CIDR notation)  for the public subnet in AZ A
+    Type: String
+    Default: 10.192.10.0/24
+  paramPublicSubnet2CIDR:
+    Description: Enter the IP range (CIDR notation)  for the public subnet in AZ B
+    Type: String
+    Default: 10.192.11.0/24
+  paramUniqueName:
+    Description: Specify a unique name
+    Type: String
+    Default: OberynMartell
+
+## =================== RESOURCES =================== #
+Resources:
+
+  # create a VPC
+  myVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref paramVpcCIDR
+      EnableDnsSupport: true # let instances in the VPC get DNS hostnames
+      EnableDnsHostnames: true # allow DNS resolution
+      Tags:
+      - Key: MasteringECS
+        Value:  !Ref paramUniqueName
+
+  # create an Internet Gateway
+  myInternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: MasteringECS
+        Value:  !Ref paramUniqueName
+
+  # attach the Internet Gateway to the VPC
+  myVPCGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref myVPC
+      InternetGatewayId: !Ref myInternetGateway
+
+  # create a public route table for the VPC (will be public once it is associated with the Internet Gateway)
+  myPublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref myVPC
+      Tags:
+      - Key: MasteringECS
+        Value:  !Ref paramUniqueName
+
+  # associate the public route table with the Internet Gateway
+  myPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: myVPCGatewayAttachment # myPublicRoute should be created only AFTER myVPCGatewayAttachment
+    Properties:
+      RouteTableId: !Ref myPublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref myInternetGateway
+
+  # create a public subnet in AZ 1 (will be public once it is associated with public route table)
+  myPublicSubnetInAZ1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      AvailabilityZone: !Select [ 0, !GetAZs '' ] # AZ 1
+      CidrBlock: !Ref paramPublicSubnet1CIDR
+      MapPublicIpOnLaunch: true # allow instances launched in this subnet receive a public IPv4 address
+      Tags:
+      - Key: MasteringECS
+        Value:  !Ref paramUniqueName
+
+  # create a public subnet in AZ 2 (will be public once it is associated with public route table)
+  myPublicSubnetInAZ2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref myVPC
+      AvailabilityZone: !Select [ 1, !GetAZs  '' ] # AZ 2
+      CidrBlock: !Ref paramPublicSubnet2CIDR
+      MapPublicIpOnLaunch: true # allow instances launched in this subnet receive a public IPv4 address
+      Tags:
+      - Key: MasteringECS
+        Value:  !Ref paramUniqueName
+
+  # associate the public route table with the public subnet in AZ 1
+  myPublicSubnetInAZ1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref myPublicRouteTable
+      SubnetId: !Ref myPublicSubnetInAZ1
+  
+  # associate the public route table with the public subnet in AZ 2
+  myPublicSubnetInAZ2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref myPublicRouteTable
+      SubnetId: !Ref myPublicSubnetInAZ2
+
+## =================== OUTPUTS =================== #
+Outputs:
+  outputVPC:
+    Description: A reference to the created VPC
+    Value: !Ref myVPC
+  outputPublicSubnets:
+    Description: A list of the public subnets
+    Value: !Join [ ",", [ !Ref myPublicSubnetInAZ1, !Ref myPublicSubnetInAZ2 ]]
