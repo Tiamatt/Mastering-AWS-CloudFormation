@@ -428,6 +428,9 @@ Resources:
 
 ## =================== OUTPUTS =================== ##
 Outputs:
+  outputEipAddress:
+    Description: Elastic IP address of the newly created EC2 instance
+    Value: !Ref myEipAddress  # the same as !GetAtt myEC2Instance.PublicIp
   outputInstanceId:
     Description: InstanceId of the newly created EC2 instance
     Value: !Ref myEC2Instance 
@@ -437,6 +440,3 @@ Outputs:
   outputPublicDNS:
     Description: Public DNS name of the newly created EC2 instance
     Value: !GetAtt myEC2Instance.PublicDnsName
-  outputEipAddress:
-    Description: Elastic IP address of the newly created EC2 instance
-    Value: !Ref myEipAddress  # the same as !GetAtt myEC2Instance.PublicIp
