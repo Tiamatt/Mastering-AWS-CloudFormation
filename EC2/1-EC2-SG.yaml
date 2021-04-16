@@ -390,15 +390,15 @@ Resources:
       InstanceType: !Ref paramInstanceType
       KeyName: !Ref paramEC2KeyPairName
       SecurityGroups:
-        - !Ref mySSHSecurityGroup
+        - !Ref mySecurityGroup
       Tags:
         - Key: MasteringCF
           Value:  !Ref paramUniqueName
 
-  mySSHSecurityGroup:   # create a new Security Group for SSH and HTTP access
+  mySecurityGroup:   # create a new Security Group for SSH and HTTP access
     Type: 'AWS::EC2::SecurityGroup'
     Properties:
-      GroupDescription: Enable port 22 (SSH) and port 80 (HTTP)
+      GroupDescription: Enable SSH access via port 22 and HTTP access via port 80
       SecurityGroupIngress:
         - IpProtocol: tcp
           FromPort: '80'
