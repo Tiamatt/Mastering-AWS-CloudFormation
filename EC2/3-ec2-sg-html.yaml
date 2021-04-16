@@ -2,10 +2,10 @@ AWSTemplateFormatVersion: '2010-09-09'
 
 ## =================== DESCRIPTION =================== ##
 Description: >-
-  AWS CloudFormation Ec2InstanceWithSecurityGroup template 
-  Create a LAMP (Linux, Apache, MySQL, PHP) stack using a single EC2 instance and a local MySQL database for storage
-  Bootstrap scripts helps to install the packages and files necessary to deploy the Apache web server, PHP and MySQL at instance launch time.
-  Template link: https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/sample-templates-appframeworks-us-east-1.html 
+  AWS CloudFormation template 
+  Create EC2 instance with Security Group
+  Run simple html file
+  Access website via public DNS name
 
 ## =================== METADATA =================== ##
 Metadata:
